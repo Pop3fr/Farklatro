@@ -3,28 +3,61 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="theme-color" content="#0d1b18" />
   <title>FARKLATRO — Roguelike Push-Your-Luck Dice</title>
+
+  <!-- Cross-Device App Icons & PWA Meta Tags -->
+  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
+  <link rel="shortcut icon" type="image/png" href="./icon-192.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="./icon-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="FARKLATRO" />
+  <meta name="theme-color" content="#0d1b18" />
+  <link rel="manifest" id="pwa-manifest" />
+
+  <script>
+    // Dynamically attach a relative-resolved Web App Manifest for Android / Desktop PWA support
+    (function() {
+      const iconUrl = new URL('./icon-192.png', window.location.href).href;
+      const startUrl = window.location.href.split('#')[0];
+      const manifest = {
+        name: 'FARKLATRO',
+        short_name: 'FARKLATRO',
+        start_url: startUrl,
+        display: 'standalone',
+        background_color: '#0d1b18',
+        theme_color: '#0d1b18',
+        icons: [
+          {
+            src: iconUrl,
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any maskable'
+          }
+        ]
+      };
+      const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+      const manifestEl = document.getElementById('pwa-manifest');
+      if (manifestEl) manifestEl.setAttribute('href', URL.createObjectURL(blob));
+    })();
+  </script>
+
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,600;0,700;1,700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,600;0,700;1,700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
   <style>
     :root {
       --bg-felt: #0d1b18;
       --bg-panel: #132521;
       --bg-card: #1a312c;
-      --accent-chips: #3b82f6;
-      --accent-mult: #ef4444;
-      --accent-gold: #f59e0b;
-      --accent-hot: #10b981;
     }
 
     * {
       -webkit-tap-highlight-color: transparent;
+      box-sizing: border-box;
     }
 
     button, [role="button"], .die-card, .charm-card, .inspectable {
@@ -42,6 +75,7 @@
       min-height: 100dvh;
       overflow-x: hidden;
       user-select: none;
+      -webkit-user-select: none;
       padding-top: env(safe-area-inset-top);
       padding-bottom: calc(env(safe-area-inset-bottom) + 92px);
     }
@@ -56,121 +90,34 @@
       font-family: 'Chakra Petch', sans-serif;
     }
 
-    .font-mono-num {
-      font-family: 'JetBrains Mono', monospace;
-    }
-
-    /* Subtle CRT Scanline Overlay */
-    .crt-overlay {
-      pointer-events: none;
-      position: fixed;
-      inset: 0;
-      z-index: 50;
-      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.14) 50%);
-      background-size: 100% 4px;
-      opacity: 0.4;
-    }
-
     /* 3D Chunky Die Styling */
     .die-card {
       transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.16s ease, border-color 0.16s ease;
       box-shadow: 0 5px 0 #94a3b8, 0 8px 14px rgba(0, 0, 0, 0.45);
       min-height: 78px;
     }
+
     @media (hover: hover) {
       .die-card:hover:not(.die-locked):not(.die-disabled) {
         transform: translateY(-4px) scale(1.03);
       }
     }
+
     .die-card:active:not(.die-locked):not(.die-disabled) {
       transform: scale(0.96);
     }
+
     .die-card.die-selected {
       transform: translateY(-8px) scale(1.04);
       box-shadow: 0 10px 0 #2563eb, 0 14px 20px rgba(37, 99, 235, 0.55);
       border-color: #60a5fa;
     }
+
     .die-card.die-locked {
       opacity: 0.62;
       transform: scale(0.94);
       box-shadow: 0 3px 0 #475569;
       cursor: default;
-    }
-    .die-card.die-rolling {
-      animation: diceRoll 0.34s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
-    }
-
-    /* Special Dice Variants */
-    .die-type-standard {
-      background: linear-gradient(145deg, #ffffff, #e2e8f0);
-      color: #0f172a;
-      border: 3px solid #cbd5e1;
-    }
-    .die-type-gold {
-      background: linear-gradient(145deg, #fef08a, #f59e0b);
-      color: #451a03;
-      border: 3px solid #fde047;
-      box-shadow: 0 5px 0 #b45309, 0 8px 16px rgba(245, 158, 11, 0.35);
-    }
-    .die-type-gold.die-selected {
-      box-shadow: 0 10px 0 #d97706, 0 14px 22px rgba(245, 158, 11, 0.65);
-    }
-    .die-type-glass {
-      background: linear-gradient(135deg, rgba(224, 242, 254, 0.92), rgba(125, 211, 252, 0.72));
-      color: #0c4a6e;
-      border: 3px solid #bae6fd;
-      box-shadow: 0 5px 0 #0284c7, 0 8px 16px rgba(56, 189, 248, 0.35);
-      backdrop-filter: blur(4px);
-    }
-    .die-type-weighted {
-      background: linear-gradient(145deg, #f3e8ff, #c084fc);
-      color: #3b0764;
-      border: 3px solid #e9d5ff;
-      box-shadow: 0 5px 0 #7e22ce, 0 8px 16px rgba(168, 85, 247, 0.35);
-    }
-    .die-type-wild {
-      background: linear-gradient(135deg, #fecdd3, #fde68a, #a7f3d0, #bfdbfe);
-      color: #1e1b4b;
-      border: 3px solid #ffffff;
-      box-shadow: 0 5px 0 #db2777, 0 8px 16px rgba(236, 72, 153, 0.35);
-    }
-
-    @keyframes diceRoll {
-      0% { transform: rotate(0deg) scale(0.85); }
-      25% { transform: rotate(-14deg) scale(1.1); }
-      50% { transform: rotate(12deg) scale(0.95); }
-      75% { transform: rotate(-6deg) scale(1.05); }
-      100% { transform: rotate(0deg) scale(1); }
-    }
-
-    @keyframes popFloat {
-      0% { opacity: 0; transform: translateY(10px) scale(0.75); }
-      20% { opacity: 1; transform: translateY(-6px) scale(1.12); }
-      80% { opacity: 1; transform: translateY(-28px) scale(1); }
-      100% { opacity: 0; transform: translateY(-42px) scale(0.9); }
-    }
-    .animate-float-score {
-      animation: popFloat 1.15s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-    }
-
-    @keyframes charmPulse {
-      0%, 100% { transform: scale(1); }
-      40% { transform: scale(1.14) rotate(-3deg); box-shadow: 0 0 22px rgba(250, 204, 21, 0.75); }
-    }
-    .charm-triggered {
-      animation: charmPulse 0.45s ease-out;
-    }
-
-    @keyframes shakeHard {
-      0%, 100% { transform: translateX(0); }
-      15% { transform: translateX(-12px) rotate(-1.5deg); }
-      30% { transform: translateX(12px) rotate(1.5deg); }
-      45% { transform: translateX(-9px); }
-      60% { transform: translateX(9px); }
-      75% { transform: translateX(-4px); }
-    }
-    .animate-farkle-shake {
-      animation: shakeHard 0.5s ease-in-out;
     }
 
     /* Pip grid */
@@ -181,6 +128,7 @@
       background-color: currentColor;
       box-shadow: inset 0 1px 2px rgba(0,0,0,0.35);
     }
+
     @media (min-width: 640px) {
       .pip {
         width: 13px;
@@ -207,1758 +155,1641 @@
     }
 
     /* Custom Scrollbar */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: #0d1b18; }
-    ::-webkit-scrollbar-thumb { background: #2d4f47; border-radius: 9999px; }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0d1b18;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #2b4c43;
+      border-radius: 3px;
+    }
+
+    /* Keyframes */
+    @keyframes shake {
+      0%, 100% { transform: translateX(0) rotate(0deg); }
+      20% { transform: translateX(-8px) rotate(-3deg); }
+      40% { transform: translateX(8px) rotate(3deg); }
+      60% { transform: translateX(-6px) rotate(-2deg); }
+      80% { transform: translateX(6px) rotate(2deg); }
+    }
+    .animate-shake {
+      animation: shake 0.45s ease-in-out;
+    }
+
+    @keyframes rollPop {
+      0% { transform: scale(0.75) rotate(-14deg); opacity: 0.4; }
+      70% { transform: scale(1.06) rotate(4deg); opacity: 1; }
+      100% { transform: scale(1) rotate(0deg); opacity: 1; }
+    }
+    .animate-roll {
+      animation: rollPop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes floatUp {
+      0% { transform: translateY(0) scale(0.95); opacity: 1; }
+      100% { transform: translateY(-34px) scale(1.08); opacity: 0; }
+    }
+    .floating-toast {
+      animation: floatUp 1.15s ease-out forwards;
+      pointer-events: none;
+    }
+
+    .charm-card {
+      transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+    }
+    @media (hover: hover) {
+      .charm-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 18px rgba(0,0,0,0.45);
+      }
+    }
+    .charm-card:active {
+      transform: scale(0.97);
+    }
   </style>
 </head>
-<body class="antialiased selection:bg-amber-500 selection:text-slate-950">
-  <div class="crt-overlay"></div>
+<body class="flex flex-col">
 
-  <!-- Floating Popups Container -->
-  <div id="floating-layer" class="fixed inset-0 pointer-events-none z-40 overflow-hidden"></div>
-
-  <!-- Top Header Bar -->
-  <header class="border-b border-emerald-900/70 bg-[#0b1614]/95 backdrop-blur-md sticky top-0 z-30">
-    <div class="max-w-7xl mx-auto px-3 sm:px-6 py-2 flex items-center justify-between gap-2">
-      <div class="flex items-center gap-2 min-w-0">
-        <div class="w-8 h-8 sm:w-9 sm:h-9 shrink-0 rounded-xl bg-gradient-to-br from-amber-400 via-red-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-amber-500/20 font-display font-bold text-slate-950 text-lg sm:text-xl">
-          🎲
+  <!-- TOP NAVIGATION / RUN STATUS BAR -->
+  <header class="w-full border-b border-emerald-900/80 bg-[#0b1614]/95 backdrop-blur-md sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-rose-600 flex items-center justify-center shadow-lg shadow-amber-500/20 border border-amber-200/40 shrink-0">
+          <span class="font-display font-bold text-slate-950 text-lg leading-none">F6</span>
         </div>
         <div class="min-w-0">
           <div class="flex items-center gap-1.5 flex-wrap">
-            <h1 class="font-display font-bold text-lg sm:text-2xl tracking-wider bg-gradient-to-r from-amber-300 via-white to-sky-300 bg-clip-text text-transparent">
-              FARKLATRO
-            </h1>
-            <span id="ante-badge" class="px-2 py-0.5 text-[10px] sm:text-xs font-mono-num font-bold rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40 truncate">
-              ANTE 1 • SMALL
-            </span>
+            <h1 class="font-display font-bold text-lg sm:text-2xl tracking-wider text-white leading-none">FARKLATRO</h1>
+            <span id="ante-badge" class="text-[10px] sm:text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 whitespace-nowrap">Ante 1 • Small</span>
           </div>
-          <p class="text-[11px] text-emerald-300/70 hidden sm:block">Push your luck • Build broken dice synergies • Beat the Blind</p>
+          <p class="text-[11px] text-emerald-300/70 hidden sm:block mt-0.5">Push your luck • Build broken dice synergies • Beat the Blind</p>
         </div>
       </div>
 
       <div class="flex items-center gap-1.5 sm:gap-3 shrink-0">
-        <button id="btn-guide" class="min-h-[38px] px-2.5 sm:px-3 py-1.5 rounded-xl bg-emerald-900/60 hover:bg-emerald-800/80 border border-emerald-700/60 text-xs sm:text-sm font-semibold text-emerald-100 transition flex items-center gap-1">
-          <span>📖</span> <span>Rules</span>
+        <button id="btn-combos" class="px-2.5 py-2 sm:px-3 sm:py-1.5 rounded-lg bg-emerald-950/90 hover:bg-emerald-900 active:scale-95 border border-emerald-700/60 text-xs font-semibold text-emerald-200 transition flex items-center gap-1.5">
+          <span>📖</span><span class="hidden xs:inline sm:inline">Combos</span>
         </button>
-        <button id="btn-sound" class="min-h-[38px] min-w-[38px] p-2 rounded-xl bg-emerald-900/60 hover:bg-emerald-800/80 border border-emerald-700/60 text-sm text-emerald-100 transition flex items-center justify-center" title="Toggle Sound">
+        <button id="btn-sound" title="Toggle Sound" class="p-2 rounded-lg bg-emerald-950/90 hover:bg-emerald-900 active:scale-95 border border-emerald-700/60 text-xs text-emerald-200 transition">
           🔊
         </button>
-        <button id="btn-new-run" class="min-h-[38px] px-2.5 sm:px-3 py-1.5 rounded-xl bg-rose-950/70 hover:bg-rose-900/80 border border-rose-700/50 text-xs sm:text-sm font-semibold text-rose-200 transition">
+        <button id="btn-new-run" class="px-2.5 py-2 sm:px-3 sm:py-1.5 rounded-lg bg-rose-950/80 hover:bg-rose-900 active:scale-95 border border-rose-700/60 text-xs font-semibold text-rose-200 transition">
           New
         </button>
       </div>
     </div>
   </header>
 
-  <!-- Main Workspace -->
-  <main id="game-root" class="max-w-7xl mx-auto px-3 sm:px-6 py-3 sm:py-4 grid grid-cols-1 lg:grid-cols-12 gap-3.5 sm:gap-5">
+  <!-- MAIN WORKSPACE -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-3 sm:py-5 grid grid-cols-1 lg:grid-cols-12 gap-3.5 sm:gap-5 items-start">
 
-    <!-- LEFT SIDEBAR: Blind Status, Score Box, Turn Pot, Resources -->
+    <!-- LEFT SIDEBAR: BLIND TARGET, SCORE METER, TURN POT, RESOURCES -->
     <aside class="lg:col-span-4 flex flex-col gap-3">
 
-      <!-- Blind Card -->
-      <section class="rounded-2xl bg-[#132521] border-2 border-emerald-800/70 p-3.5 sm:p-4 shadow-xl relative overflow-hidden">
-        <div class="flex items-start justify-between gap-2 mb-2">
-          <div>
-            <div class="text-[11px] font-bold uppercase tracking-widest text-amber-400" id="blind-subtitle">Small Blind</div>
-            <h2 class="font-display font-bold text-lg sm:text-2xl text-white" id="blind-title">The Warm-Up</h2>
-          </div>
-          <div class="px-2.5 py-1 rounded-xl bg-amber-500/15 border border-amber-400/40 text-amber-300 font-mono-num font-bold text-xs sm:text-sm">
-            Reward: $<span id="blind-reward">4</span>+
-          </div>
+      <!-- BLIND CARD -->
+      <section id="blind-panel" class="inspectable rounded-2xl bg-[#122420] border border-emerald-800/70 p-3.5 sm:p-4 shadow-xl relative overflow-hidden cursor-pointer">
+        <div class="flex items-center justify-between mb-1">
+          <span id="blind-type-label" class="text-[11px] font-bold uppercase tracking-widest text-amber-400">Small Blind</span>
+          <span id="blind-reward-label" class="text-xs font-semibold text-emerald-300 bg-emerald-950/90 px-2 py-0.5 rounded border border-emerald-700/50">Reward: $4+</span>
         </div>
+        <h2 id="blind-name" class="font-display text-xl sm:text-2xl font-bold text-white tracking-wide">The Warm-Up</h2>
+        <p id="blind-desc" class="text-xs text-emerald-200/80 mt-0.5 leading-relaxed">Standard Farkle rules. Score enough points before running out of turns.</p>
 
-        <!-- Boss Modifier Banner (Tap-to-Inspect enabled) -->
-        <button type="button" id="boss-modifier-box" class="hidden w-full text-left mb-2.5 px-3 py-2 rounded-xl bg-rose-950/85 border border-rose-500/60 text-rose-200 text-xs font-medium flex items-center justify-between gap-2 active:scale-[0.99] transition">
-          <span class="flex items-center gap-2 min-w-0">
-            <span class="text-base shrink-0">👹</span>
-            <span id="boss-modifier-text" class="truncate">Boss Rule</span>
-          </span>
-          <span class="text-[10px] uppercase font-bold text-rose-300/80 shrink-0 underline">Tap</span>
-        </button>
-
-        <!-- Target vs Current Score -->
-        <div class="bg-[#0b1614] rounded-xl p-2.5 sm:p-3 border border-emerald-900/80 mb-2.5">
-          <div class="flex justify-between items-baseline text-xs text-slate-400 mb-0.5">
-            <span>ROUND SCORE</span>
-            <span>TARGET: <strong id="target-score" class="text-amber-300 font-mono-num text-sm">600</strong></span>
+        <!-- Round Score vs Target -->
+        <div class="mt-3 p-3 rounded-xl bg-black/35 border border-emerald-900/70">
+          <div class="flex justify-between items-baseline mb-1">
+            <span class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Round Score</span>
+            <span class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Target: <strong id="target-score" class="text-amber-300 text-sm font-display">600</strong></span>
           </div>
-          <div class="flex items-baseline justify-between">
-            <span id="round-score" class="font-mono-num font-extrabold text-2xl sm:text-4xl text-white tracking-tight">0</span>
-            <span id="score-percent" class="text-xs font-mono-num font-bold text-emerald-400">0%</span>
+          <div class="flex items-baseline justify-between gap-2">
+            <span id="round-score" class="font-display text-2xl sm:text-4xl font-bold text-white">0</span>
+            <span id="score-pct" class="text-xs font-bold text-emerald-400">0%</span>
           </div>
-          <div class="w-full h-2 bg-slate-900 rounded-full overflow-hidden mt-1.5 border border-slate-800">
-            <div id="score-progress-bar" class="h-full bg-gradient-to-r from-sky-500 via-emerald-400 to-amber-400 transition-all duration-500 rounded-full" style="width: 0%"></div>
-          </div>
-        </div>
-
-        <!-- Balatro-Style Turn Pot Calculator (Base Points x Mult) -->
-        <div class="bg-[#0b1614] rounded-xl p-2.5 sm:p-3 border border-slate-800">
-          <div class="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-            <span>Current Turn Pot</span>
-            <span id="push-streak-badge" class="text-emerald-400">Push Streak: 0</span>
-          </div>
-
-          <div class="grid grid-cols-11 items-center gap-1.5 text-center">
-            <!-- Base Points (Blue) -->
-            <div class="col-span-5 rounded-xl bg-blue-600/25 border-2 border-blue-500 py-1.5 sm:py-2 px-1">
-              <div class="text-[10px] uppercase font-bold text-blue-300">Base Pts</div>
-              <div id="turn-base-display" class="font-mono-num font-extrabold text-lg sm:text-2xl text-blue-200">0</div>
-              <div id="preview-base-add" class="text-[11px] font-mono-num font-bold text-sky-300 h-4">+0 sel</div>
-            </div>
-
-            <div class="col-span-1 font-display font-bold text-lg sm:text-xl text-slate-400">×</div>
-
-            <!-- Mult (Red) -->
-            <div class="col-span-5 rounded-xl bg-rose-600/25 border-2 border-rose-500 py-1.5 sm:py-2 px-1">
-              <div class="text-[10px] uppercase font-bold text-rose-300">Mult</div>
-              <div id="turn-mult-display" class="font-mono-num font-extrabold text-lg sm:text-2xl text-rose-200">1.0x</div>
-              <div id="preview-mult-add" class="text-[11px] font-mono-num font-bold text-rose-300 h-4"></div>
-            </div>
-          </div>
-
-          <div class="mt-2 pt-1.5 border-t border-slate-800/90 flex items-center justify-between text-xs">
-            <span class="text-slate-400">Projected Bank Total:</span>
-            <span id="projected-bank-total" class="font-mono-num font-extrabold text-sm sm:text-base text-emerald-300">0 pts</span>
+          <div class="w-full h-2.5 bg-slate-900 rounded-full overflow-hidden mt-2 border border-slate-800">
+            <div id="score-bar" class="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-amber-400 transition-all duration-500" style="width: 0%"></div>
           </div>
         </div>
       </section>
 
-      <!-- Player Resources Grid (Turns, Rerolls, Bankroll) -->
+      <!-- CURRENT TURN POT (BALATRO CHIPS x MULT BOX) -->
+      <section class="rounded-2xl bg-[#122420] border border-emerald-800/70 p-3.5 sm:p-4 shadow-xl">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-[11px] font-bold uppercase tracking-widest text-slate-300">Current Turn Pot</span>
+          <span id="push-streak-badge" class="text-[11px] font-bold px-2 py-0.5 rounded bg-purple-950/90 text-purple-300 border border-purple-700/50">Push Streak: 0</span>
+        </div>
+
+        <div class="grid grid-cols-11 items-center gap-1.5 text-center">
+          <div class="col-span-5 rounded-xl bg-blue-950/85 border border-blue-500/50 py-2 px-1.5 shadow-inner">
+            <div class="text-[10px] uppercase tracking-wider text-blue-300 font-bold">Base Pts</div>
+            <div id="pot-chips" class="font-display text-xl sm:text-2xl font-bold text-blue-100 mt-0.5">0</div>
+          </div>
+          <div class="col-span-1 font-display font-bold text-lg text-slate-400">×</div>
+          <div class="col-span-5 rounded-xl bg-rose-950/85 border border-rose-500/50 py-2 px-1.5 shadow-inner">
+            <div class="text-[10px] uppercase tracking-wider text-rose-300 font-bold">Mult</div>
+            <div id="pot-mult" class="font-display text-xl sm:text-2xl font-bold text-rose-200 mt-0.5">1.0x</div>
+          </div>
+        </div>
+
+        <div class="mt-2.5 pt-2 border-t border-emerald-900/70 flex items-center justify-between">
+          <span class="text-xs text-slate-400">Projected Bank:</span>
+          <span id="pot-total" class="font-display text-lg font-bold text-amber-300">0 pts</span>
+        </div>
+      </section>
+
+      <!-- RESOURCES (TURNS, REROLLS, CASH) -->
       <section class="grid grid-cols-3 gap-2">
-        <div class="rounded-2xl bg-[#132521] border border-sky-800/60 p-2.5 sm:p-3 text-center shadow-md">
-          <div class="text-[10px] sm:text-[11px] font-bold uppercase text-sky-300/80">Turns</div>
-          <div id="turns-left" class="font-mono-num font-extrabold text-xl sm:text-3xl text-sky-400">4</div>
-          <div class="text-[10px] text-slate-400 hidden sm:block">Banks left</div>
+        <div class="rounded-xl bg-[#122420] border border-emerald-800/70 p-2.5 text-center">
+          <div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Turns</div>
+          <div id="stat-turns" class="font-display text-xl sm:text-2xl font-bold text-sky-400 mt-0.5">4</div>
         </div>
-
-        <div class="rounded-2xl bg-[#132521] border border-rose-800/60 p-2.5 sm:p-3 text-center shadow-md">
-          <div class="text-[10px] sm:text-[11px] font-bold uppercase text-rose-300/80">Rerolls</div>
-          <div id="rerolls-left" class="font-mono-num font-extrabold text-xl sm:text-3xl text-rose-400">3</div>
-          <div class="text-[10px] text-slate-400 hidden sm:block">Safe re-throw</div>
+        <div class="rounded-xl bg-[#122420] border border-emerald-800/70 p-2.5 text-center">
+          <div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Rerolls</div>
+          <div id="stat-rerolls" class="font-display text-xl sm:text-2xl font-bold text-rose-400 mt-0.5">3</div>
         </div>
-
-        <div class="rounded-2xl bg-[#132521] border border-amber-700/60 p-2.5 sm:p-3 text-center shadow-md">
-          <div class="text-[10px] sm:text-[11px] font-bold uppercase text-amber-300/80">Cash</div>
-          <div class="font-mono-num font-extrabold text-xl sm:text-3xl text-amber-400">$<span id="player-money">4</span></div>
-          <div class="text-[10px] text-slate-400 hidden sm:block">For Shop</div>
+        <div class="rounded-xl bg-[#122420] border border-emerald-800/70 p-2.5 text-center">
+          <div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Cash</div>
+          <div id="stat-money" class="font-display text-xl sm:text-2xl font-bold text-amber-400 mt-0.5">$4</div>
         </div>
       </section>
 
-      <!-- Active Combo Levels Mini-Card -->
-      <details class="rounded-2xl bg-[#132521] border border-emerald-800/60 p-3 shadow-md group" open>
-        <summary class="flex items-center justify-between cursor-pointer list-none">
-          <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-300">Combo Mastery Levels</h3>
-          <span class="text-[11px] text-slate-400">Manuals ▾</span>
-        </summary>
-        <div id="combo-levels-list" class="grid grid-cols-2 gap-1.5 text-xs mt-2"></div>
-      </details>
     </aside>
 
-    <!-- RIGHT MAIN ARENA: Charms Rack + Tap-to-Inspect Drawer + Dice Table OR Shop View -->
-    <section class="lg:col-span-8 flex flex-col gap-3.5">
+    <!-- RIGHT / CENTER STAGE: CHARMS, INSPECT DRAWER, DICE BOARD & ACTIONS -->
+    <div class="lg:col-span-8 flex flex-col gap-3">
 
-      <!-- CHARMS RACK -->
-      <div class="rounded-2xl bg-[#132521]/95 border border-emerald-800/70 p-3 shadow-lg">
+      <!-- EQUIPPED CHARMS BAR -->
+      <section class="rounded-2xl bg-[#122420] border border-emerald-800/70 p-3 sm:p-4 shadow-xl">
         <div class="flex items-center justify-between mb-2">
           <div class="flex items-center gap-2">
-            <span class="text-xs font-bold uppercase tracking-wider text-amber-300">✨ Equipped Charms</span>
-            <span id="charm-count-badge" class="text-xs font-mono-num px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">0 / 5</span>
+            <span class="text-xs font-bold uppercase tracking-widest text-amber-300">✨ Equipped Charms</span>
+            <span id="charm-count" class="text-xs font-semibold text-slate-400">0 / 5</span>
           </div>
           <span class="text-[11px] text-slate-400">Tap any Charm to inspect or sell</span>
         </div>
+        <div id="charms-rack" class="grid grid-cols-2 sm:grid-cols-5 gap-2 min-h-[76px]">
+          <!-- Populated dynamically -->
+        </div>
+      </section>
 
-        <div id="charms-rack" class="grid grid-cols-3 sm:grid-cols-5 gap-2 min-h-[84px] sm:min-h-[106px]"></div>
-      </div>
-
-      <!-- TAP-TO-INSPECT DRAWER -->
-      <div id="inspect-drawer" class="hidden rounded-2xl bg-[#0b1614] border-2 border-amber-400/70 p-3.5 shadow-xl transition-all">
+      <!-- MOBILE & DESKTOP TAP-TO-INSPECT DRAWER -->
+      <section id="inspect-drawer" class="hidden rounded-xl bg-[#0e1d1a] border border-amber-500/40 px-3.5 py-2.5 shadow-lg transition-all">
         <div class="flex items-start justify-between gap-3">
-          <div class="flex items-start gap-2.5 min-w-0">
-            <span id="inspect-icon" class="text-2xl sm:text-3xl shrink-0 mt-0.5">✨</span>
-            <div class="min-w-0">
-              <div class="flex items-center gap-2 flex-wrap">
-                <span id="inspect-badge" class="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">CHARM</span>
-                <h4 id="inspect-title" class="font-display font-bold text-base sm:text-lg text-white">Item Name</h4>
-              </div>
-              <p id="inspect-desc" class="text-xs sm:text-sm text-slate-300 mt-1 leading-relaxed">Description goes here.</p>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span id="inspect-tag" class="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">Charm</span>
+              <h4 id="inspect-title" class="font-display font-bold text-sm text-white truncate">Item Name</h4>
             </div>
+            <p id="inspect-desc" class="text-xs text-slate-300 mt-1 leading-relaxed">Item description goes here.</p>
           </div>
-          <div class="flex items-center gap-2 shrink-0">
-            <button type="button" id="btn-inspect-sell" class="hidden min-h-[38px] px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-extrabold shadow transition">
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button id="btn-inspect-sell" class="hidden px-2.5 py-1.5 rounded-lg bg-rose-950 hover:bg-rose-900 active:scale-95 border border-rose-600/60 text-xs font-bold text-rose-200 transition">
               Sell +$2
             </button>
-            <button type="button" id="btn-inspect-close" class="min-h-[38px] min-w-[38px] rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm flex items-center justify-center">
+            <button id="btn-inspect-close" aria-label="Close details" class="w-7 h-7 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-300 text-xs font-bold flex items-center justify-center">
               ✕
             </button>
           </div>
         </div>
-      </div>
+      </section>
 
-      <!-- VIEW 1: ACTIVE DICE TABLE -->
-      <div id="play-arena" class="rounded-2xl bg-[#132521] border-2 border-emerald-800/80 p-3.5 sm:p-6 shadow-2xl flex flex-col justify-between min-h-[360px] sm:min-h-[420px] relative">
+      <!-- DICE ARENA -->
+      <section id="dice-arena" class="rounded-2xl bg-[#10201d] border border-emerald-700/60 p-3.5 sm:p-5 shadow-2xl relative flex flex-col justify-between min-h-[310px] sm:min-h-[345px]">
 
-        <!-- Status Banner / Combo Detection Readout -->
-        <div class="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-emerald-900/70">
+        <!-- Live Selection Preview Banner -->
+        <div class="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-emerald-900/80">
           <div class="min-w-0 flex-1">
-            <span class="text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-400 block">Selected Combination</span>
-            <div id="detected-combo-label" class="font-display font-bold text-base sm:text-xl text-amber-300 truncate">
+            <div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Selected Combination</div>
+            <div id="selection-readout" class="font-display text-sm sm:text-lg font-bold text-amber-300 mt-0.5 truncate">
               Select scoring dice to begin!
             </div>
           </div>
-
-          <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            <button id="btn-select-all-scoring" class="min-h-[38px] px-2.5 sm:px-3 py-1.5 rounded-xl bg-emerald-800/80 hover:bg-emerald-700 text-emerald-100 text-xs font-bold border border-emerald-600/50 transition">
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button id="btn-select-all" class="px-3 py-1.5 rounded-lg bg-emerald-900/80 hover:bg-emerald-800 active:scale-95 text-xs font-semibold text-emerald-100 border border-emerald-600/50 transition">
               Auto-Select
             </button>
-            <button id="btn-clear-selection" class="min-h-[38px] px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition">
+            <button id="btn-clear-sel" class="px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-xs font-semibold text-slate-300 border border-slate-600/50 transition">
               Clear
             </button>
           </div>
         </div>
 
-        <!-- 6 DICE TRAY -->
-        <div class="my-4 sm:my-6 flex flex-col items-center justify-center">
-          <div id="dice-container" class="grid grid-cols-3 sm:grid-cols-6 gap-2.5 sm:gap-4 w-full max-w-2xl justify-items-center"></div>
+        <!-- Floating Toasts Layer -->
+        <div id="toast-layer" class="absolute inset-0 pointer-events-none flex items-center justify-center z-20 overflow-hidden"></div>
 
-          <!-- Dice Cup Composition Pills -->
-          <div class="mt-4 sm:mt-5 flex flex-wrap items-center justify-center gap-1.5 text-[11px] text-slate-400">
-            <span class="font-semibold text-slate-300 mr-0.5">Cup (Tap to inspect):</span>
-            <div id="cup-summary-pills" class="flex flex-wrap justify-center gap-1.5"></div>
-          </div>
+        <!-- THE 6 DICE TRAY -->
+        <div id="dice-container" class="my-4 sm:my-6 grid grid-cols-3 sm:flex sm:flex-wrap items-center justify-items-center justify-center gap-2.5 sm:gap-4 min-h-[155px] sm:min-h-[120px]">
+          <!-- Rendered by JS -->
         </div>
 
-        <!-- FARKLE / HOT DICE / TURN RESULT BANNER -->
-        <div id="event-banner" class="hidden mb-3 p-3.5 rounded-2xl text-center border-2 transition-all">
-          <div id="event-banner-title" class="font-display font-extrabold text-xl sm:text-3xl tracking-wide"></div>
-          <div id="event-banner-desc" class="text-xs sm:text-sm mt-1 font-medium"></div>
+        <!-- ACTIVE DICE CUP LEGEND (TAP TO INSPECT SPECIAL DICE) -->
+        <div class="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-emerald-900/70 text-xs text-slate-400">
+          <div class="flex items-center gap-1.5 flex-wrap" id="cup-summary">
+            <!-- Shows your 6 dice types -->
+          </div>
+          <span id="status-hint" class="text-emerald-300/85 font-medium text-[11px]">Tap scoring dice, then Push or Bank.</span>
         </div>
 
-        <!-- ACTION CONTROLS (Sticky bottom bar on mobile, inline row on desktop) -->
-        <div id="action-controls-bar" class="fixed bottom-0 left-0 right-0 z-30 bg-[#0b1614]/95 backdrop-blur-md border-t border-emerald-800/80 px-2.5 pt-2 mobile-sticky-bar lg:static lg:bg-transparent lg:backdrop-blur-none lg:border-t-0 lg:p-0">
-          <div class="max-w-7xl mx-auto grid grid-cols-3 gap-2 sm:gap-3">
-            <!-- Push Your Luck -->
-            <button id="btn-push" class="min-h-[52px] sm:min-h-[60px] p-2 sm:p-3.5 rounded-xl sm:rounded-2xl bg-gradient-to-b from-emerald-500 to-emerald-700 hover:from-emerald-400 hover:to-emerald-600 disabled:from-slate-800 disabled:to-slate-900 disabled:text-slate-500 disabled:border-slate-700 text-slate-950 font-extrabold shadow-lg shadow-emerald-950/60 border-b-4 border-emerald-900 active:translate-y-0.5 transition flex flex-col items-center justify-center text-center leading-tight">
-              <span class="text-xs sm:text-base tracking-wide">🎲 KEEP & ROLL</span>
-              <span id="btn-push-sub" class="text-[10px] sm:text-[11px] font-semibold opacity-90 mt-0.5 line-clamp-1">+0.5x Mult</span>
-            </button>
+      </section>
 
-            <!-- Bank Points -->
-            <button id="btn-bank" class="min-h-[52px] sm:min-h-[60px] p-2 sm:p-3.5 rounded-xl sm:rounded-2xl bg-gradient-to-b from-amber-400 to-amber-600 hover:from-amber-300 hover:to-amber-500 disabled:from-slate-800 disabled:to-slate-900 disabled:text-slate-500 disabled:border-slate-700 text-slate-950 font-extrabold shadow-lg shadow-amber-950/60 border-b-4 border-amber-800 active:translate-y-0.5 transition flex flex-col items-center justify-center text-center leading-tight">
-              <span class="text-xs sm:text-base tracking-wide">💰 BANK POT</span>
-              <span id="btn-bank-sub" class="text-[10px] sm:text-[11px] font-semibold opacity-90 mt-0.5 line-clamp-1">0 pts</span>
-            </button>
-
-            <!-- Safe Reroll -->
-            <button id="btn-reroll" class="min-h-[52px] sm:min-h-[60px] p-2 sm:p-3.5 rounded-xl sm:rounded-2xl bg-gradient-to-b from-rose-500 to-rose-700 hover:from-rose-400 hover:to-rose-600 disabled:from-slate-800 disabled:to-slate-900 disabled:text-slate-500 disabled:border-slate-700 text-white font-extrabold shadow-lg shadow-rose-950/60 border-b-4 border-rose-900 active:translate-y-0.5 transition flex flex-col items-center justify-center text-center leading-tight">
-              <span class="text-xs sm:text-base tracking-wide">🔄 REROLL</span>
-              <span id="btn-reroll-sub" class="text-[10px] sm:text-[11px] font-semibold opacity-90 mt-0.5 line-clamp-1">3 left (Safe)</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- VIEW 2: SHOP PHASE (Between Blinds) -->
-      <div id="shop-arena" class="hidden rounded-2xl bg-[#132521] border-2 border-amber-500/70 p-4 sm:p-6 shadow-2xl flex-col gap-4 sm:gap-5">
-        <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-emerald-800">
-          <div>
-            <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold uppercase tracking-wider">Blind Defeated!</span>
-            <h2 class="font-display font-bold text-xl sm:text-3xl text-amber-300 mt-1">THE DICE PEDDLER'S SHOP</h2>
-            <p id="shop-payout-summary" class="text-xs text-slate-300">Earned $4 Blind Reward</p>
-          </div>
-
-          <div class="flex items-center gap-2 w-full sm:w-auto">
-            <button id="btn-shop-reroll" class="flex-1 sm:flex-initial min-h-[46px] px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-bold text-sm shadow-md transition">
-              🔄 Restock ($<span id="shop-reroll-cost">3</span>)
-            </button>
-            <button id="btn-next-blind" class="flex-1 sm:flex-initial min-h-[46px] px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-300 hover:to-teal-400 text-slate-950 font-extrabold text-sm shadow-lg transition">
-              Next Blind ➔
-            </button>
-          </div>
-        </div>
-
-        <!-- Shop Shelves -->
-        <div>
-          <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5">Available Upgrades (Charms, Manuals & Custom Dice)</div>
-          <div id="shop-items-grid" class="grid grid-cols-1 md:grid-cols-3 gap-3"></div>
-        </div>
-
-        <!-- Cup Customizer Preview in Shop -->
-        <div class="rounded-xl bg-[#0b1614] border border-emerald-900/80 p-3.5">
-          <div class="flex flex-wrap items-center justify-between gap-1 mb-2">
-            <span class="text-xs font-bold uppercase tracking-wider text-sky-300">Your Current 6-Die Cup</span>
-            <span class="text-[11px] text-slate-400">Tap any slot to inspect</span>
-          </div>
-          <div id="shop-cup-display" class="grid grid-cols-3 sm:grid-cols-6 gap-2"></div>
-        </div>
-      </div>
-
-      <!-- VIEW 3: GAME OVER BANNER -->
-      <div id="gameover-arena" class="hidden rounded-2xl bg-[#132521] border-2 border-rose-500/80 p-6 sm:p-8 text-center shadow-2xl flex-col items-center justify-center gap-4">
-        <div id="gameover-emoji" class="text-5xl sm:text-6xl">💀</div>
-        <h2 id="gameover-title" class="font-display font-extrabold text-2xl sm:text-4xl text-rose-400">OUT OF TURNS!</h2>
-        <p id="gameover-desc" class="text-slate-300 max-w-md text-xs sm:text-base">
-          You fell short of the Blind target. Every Farkle teaches you how to bend the odds next time.
-        </p>
-        <div class="grid grid-cols-3 gap-2.5 sm:gap-3 w-full max-w-md my-1">
-          <div class="p-2.5 sm:p-3 rounded-xl bg-[#0b1614] border border-slate-800">
-            <div class="text-[10px] sm:text-[11px] text-slate-400">Reached</div>
-            <div id="stat-ante" class="font-mono-num font-bold text-base sm:text-lg text-amber-300">Ante 1</div>
-          </div>
-          <div class="p-2.5 sm:p-3 rounded-xl bg-[#0b1614] border border-slate-800">
-            <div class="text-[10px] sm:text-[11px] text-slate-400">Best Turn</div>
-            <div id="stat-best-turn" class="font-mono-num font-bold text-base sm:text-lg text-emerald-300">0</div>
-          </div>
-          <div class="p-2.5 sm:p-3 rounded-xl bg-[#0b1614] border border-slate-800">
-            <div class="text-[10px] sm:text-[11px] text-slate-400">Farkles</div>
-            <div id="stat-farkles" class="font-mono-num font-bold text-base sm:text-lg text-rose-300">0</div>
-          </div>
-        </div>
-        <button id="btn-restart-gameover" class="min-h-[48px] px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-extrabold text-base shadow-lg transition">
-          🎲 Start Fresh Run
+      <!-- DESKTOP ACTION BUTTONS (VISIBLE ON LG+ SCREENS) -->
+      <section class="hidden lg:grid grid-cols-3 gap-3">
+        <button id="btn-keep-roll-desktop" class="py-3.5 px-4 rounded-xl bg-gradient-to-b from-blue-500 to-blue-700 hover:from-blue-400 hover:to-blue-600 disabled:opacity-40 disabled:pointer-events-none text-white font-display font-bold text-base tracking-wide shadow-lg shadow-blue-950/60 border border-blue-300/40 transition active:translate-y-0.5 flex flex-col items-center justify-center">
+          <span>KEEP & ROLL AGAIN</span>
+          <span class="text-[11px] font-sans font-semibold text-blue-100/90">+0.5x Mult • Push Your Luck</span>
         </button>
-      </div>
 
-    </section>
+        <button id="btn-bank-desktop" class="py-3.5 px-4 rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-700 hover:from-emerald-400 hover:to-emerald-600 disabled:opacity-40 disabled:pointer-events-none text-white font-display font-bold text-base tracking-wide shadow-lg shadow-emerald-950/60 border border-emerald-300/40 transition active:translate-y-0.5 flex flex-col items-center justify-center">
+          <span>BANK TURN POT</span>
+          <span id="bank-btn-sub-desktop" class="text-[11px] font-sans font-semibold text-emerald-100/90">Lock in 0 pts</span>
+        </button>
+
+        <button id="btn-reroll-desktop" class="py-3.5 px-4 rounded-xl bg-gradient-to-b from-rose-600 to-rose-800 hover:from-rose-500 hover:to-rose-700 disabled:opacity-40 disabled:pointer-events-none text-white font-display font-bold text-base tracking-wide shadow-lg shadow-rose-950/60 border border-rose-300/40 transition active:translate-y-0.5 flex flex-col items-center justify-center">
+          <span>REROLL UNLOCKED</span>
+          <span id="reroll-btn-sub-desktop" class="text-[11px] font-sans font-semibold text-rose-100/90">Safe Re-throw (3 left)</span>
+        </button>
+      </section>
+
+    </div>
   </main>
 
-  <!-- SCORING & DICE GUIDE MODAL -->
-  <div id="guide-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-    <div class="bg-[#132521] border-2 border-emerald-700 rounded-2xl max-w-2xl w-full max-h-[86dvh] overflow-y-auto p-4 sm:p-6 shadow-2xl">
-      <div class="flex items-center justify-between pb-3 border-b border-emerald-800">
-        <h2 class="font-display font-bold text-xl sm:text-2xl text-amber-300">FARKLATRO Rules & Scoring</h2>
-        <button id="btn-close-guide" class="min-h-[38px] min-w-[38px] rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold">✕</button>
-      </div>
+  <!-- MOBILE STICKY THUMB ACTION BAR (VISIBLE BELOW LG BREAKPOINT) -->
+  <div id="mobile-action-bar" class="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-[#0b1614]/95 backdrop-blur-md border-t border-emerald-800/80 px-2.5 pt-2 mobile-sticky-bar shadow-[0_-8px_24px_rgba(0,0,0,0.55)]">
+    <div class="max-w-xl mx-auto grid grid-cols-12 gap-1.5">
+      <button id="btn-keep-roll-mobile" class="col-span-5 min-h-[54px] py-2 px-2 rounded-xl bg-gradient-to-b from-blue-500 to-blue-700 active:scale-95 disabled:opacity-40 disabled:pointer-events-none text-white font-display font-bold text-xs sm:text-sm leading-tight shadow-md border border-blue-300/40 flex flex-col items-center justify-center">
+        <span>KEEP & ROLL</span>
+        <span class="text-[10px] font-sans font-semibold text-blue-100/90 mt-0.5">+0.5x Mult</span>
+      </button>
 
-      <div class="space-y-4 mt-4 text-sm text-slate-200">
-        <div class="p-3.5 rounded-xl bg-[#0b1614] border border-emerald-900">
-          <h3 class="font-bold text-emerald-300 mb-1">🎯 Core Push-Your-Luck Loop</h3>
-          <p class="text-xs text-slate-300 leading-relaxed">
-            Roll 6 dice each turn. Select scoring dice to add their <strong>Base Points</strong> to your Turn Pot.
-            Choose <strong>Keep & Roll</strong> to lock those dice and roll the rest—each push adds <strong>+0.5x Mult</strong>!
-            If all 6 dice score, you trigger <strong>HOT DICE!</strong> (+2.0x Mult and all 6 dice refresh!).
-            If a roll has zero scoring dice, you <strong>FARKLE</strong> and lose your unbanked Turn Pot!
-          </p>
-        </div>
+      <button id="btn-bank-mobile" class="col-span-4 min-h-[54px] py-2 px-2 rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-700 active:scale-95 disabled:opacity-40 disabled:pointer-events-none text-white font-display font-bold text-xs sm:text-sm leading-tight shadow-md border border-emerald-300/40 flex flex-col items-center justify-center">
+        <span>BANK POT</span>
+        <span id="bank-btn-sub-mobile" class="text-[10px] font-sans font-semibold text-emerald-100/90 mt-0.5 truncate max-w-full">0 pts</span>
+      </button>
 
-        <div>
-          <h3 class="font-bold text-amber-300 mb-2">📊 Base Combo Scoring (Lv. 1)</h3>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-            <div class="p-2.5 rounded-lg bg-[#0b1614] flex justify-between"><span>Single <strong>1</strong></span><span class="font-mono-num text-sky-300 font-bold">100 pts</span></div>
-            <div class="p-2.5 rounded-lg bg-[#0b1614] flex justify-between"><span>Single <strong>5</strong></span><span class="font-mono-num text-sky-300 font-bold">50 pts</span></div>
-            <div class="p-2.5 rounded-lg bg-[#0b1614] flex justify-between"><span>Three <strong>1s</strong></span><span class="font-mono-num text-sky-300 font-bold">1,000 pts</span></div>
-            <div class="p-2.5 rounded-lg bg-[#0b1614] flex justify-between"><span>Three <strong>2s–6s</strong></span><span class="font-mono-num text-sky-300 font-bold">Face × 100 pts</span></div>
-            <div class="p-2.5 rounded-lg bg-[#0b1614] flex justify-between"><span><strong>4 / 5 / 6</strong> of a Kind</span><span class="font-mono-num text-sky-300 font-bold">×2 / ×4 / ×8 Base</span></div>
-            <div class="p-2.5 rounded-lg bg-[#0b1614] flex justify-between"><span><strong>1–6 Straight</strong> (all 6)</span><span class="font-mono-num text-emerald-300 font-bold">1,500 pts (+1x Mult)</span></div>
-            <div class="p-2.5 rounded-lg bg-[#0b1614] flex justify-between"><span><strong>Three Pairs</strong> (all 6)</span><span class="font-mono-num text-emerald-300 font-bold">1,500 pts (+1x Mult)</span></div>
-            <div class="p-2.5 rounded-lg bg-[#0b1614] flex justify-between"><span><strong>Full House</strong> (3 + 2)</span><span class="font-mono-num text-emerald-300 font-bold">3-Kind + 250 pts</span></div>
-          </div>
-        </div>
-
-        <div>
-          <h3 class="font-bold text-purple-300 mb-2">🎲 Special Dice Types</h3>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-            <div class="p-2.5 rounded-lg bg-[#0b1614] border border-amber-500/40"><strong class="text-amber-300">Gold Die:</strong> Grants <strong>+$2</strong> if left unscored on the table when you Bank!</div>
-            <div class="p-2.5 rounded-lg bg-[#0b1614] border border-sky-500/40"><strong class="text-sky-300">Glass Die:</strong> Multiplies Turn Mult by <strong>×2</strong> when scored, but has a 1-in-4 chance to crack back to Standard after banking.</div>
-            <div class="p-2.5 rounded-lg bg-[#0b1614] border border-purple-500/40"><strong class="text-purple-300">Weighted Die:</strong> Heavily weighted toward rolling <strong>1s</strong> and <strong>6s</strong>.</div>
-            <div class="p-2.5 rounded-lg bg-[#0b1614] border border-pink-500/40"><strong class="text-pink-300">Wild Die:</strong> Acts as a <strong>1</strong> for singles, or automatically morphs into whatever face completes a 3-of-a-Kind, Straight, or Three Pairs!</div>
-          </div>
-        </div>
-      </div>
+      <button id="btn-reroll-mobile" class="col-span-3 min-h-[54px] py-2 px-1.5 rounded-xl bg-gradient-to-b from-rose-600 to-rose-800 active:scale-95 disabled:opacity-40 disabled:pointer-events-none text-white font-display font-bold text-xs leading-tight shadow-md border border-rose-300/40 flex flex-col items-center justify-center">
+        <span>REROLL</span>
+        <span id="reroll-btn-sub-mobile" class="text-[10px] font-sans font-semibold text-rose-100/90 mt-0.5">(3 left)</span>
+      </button>
     </div>
   </div>
 
-  <script>
-    /**
-     * ============================================================================
-     * FARKLATRO — COMPLETE GAME ENGINE & AUDIO SYNTHESIZER
-     * ============================================================================
-     */
+  <!-- MODAL OVERLAY: SHOP / BLIND CLEAR / GAME OVER / COMBO GUIDE -->
+  <div id="modal-backdrop" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 hidden items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto">
 
-    class SoundFX {
-      constructor() {
-        this.enabled = true;
-        this.ctx = null;
-      }
+    <!-- SHOP MODAL -->
+    <div id="shop-modal" class="hidden w-full max-w-4xl rounded-t-3xl sm:rounded-3xl bg-[#11221e] border-t sm:border border-amber-500/50 shadow-2xl p-4 sm:p-6 text-slate-100 max-h-[92dvh] overflow-y-auto">
+      <div class="flex flex-wrap items-center justify-between gap-3 pb-3.5 border-b border-emerald-800/80">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-widest text-amber-400">Blind Defeated!</span>
+          <h2 class="font-display text-2xl sm:text-3xl font-bold text-white">The Dice Peddler's Shop</h2>
+          <p id="shop-payout-breakdown" class="text-xs text-emerald-300 mt-0.5">Base Reward + Interest earned!</p>
+        </div>
+        <div class="flex items-center gap-2.5 ml-auto">
+          <div class="px-3.5 py-2 rounded-xl bg-amber-950/80 border border-amber-500/50 text-right">
+            <div class="text-[10px] uppercase font-bold text-amber-300">Your Cash</div>
+            <div id="shop-money" class="font-display text-xl sm:text-2xl font-bold text-amber-400">$10</div>
+          </div>
+          <button id="btn-next-blind" class="px-4 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 active:scale-95 text-slate-950 font-display font-bold text-sm sm:text-base shadow-lg transition">
+            Next Blind →
+          </button>
+        </div>
+      </div>
 
-      init() {
-        if (!this.ctx) {
-          const AudioCtx = window.AudioContext || window.webkitAudioContext;
-          if (AudioCtx) this.ctx = new AudioCtx();
-        }
-        if (this.ctx && this.ctx.state === 'suspended') {
-          this.ctx.resume();
-        }
-      }
+      <!-- Shop Controls -->
+      <div class="flex items-center justify-between mt-3.5 mb-2">
+        <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Charms & Combo Manuals</span>
+        <button id="btn-shop-reroll" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-600 text-xs font-semibold text-amber-300 transition">
+          Restock Shop ($2)
+        </button>
+      </div>
 
-      playTone(freq, type = 'sine', duration = 0.12, gainVal = 0.12, delay = 0) {
-        if (!this.enabled) return;
-        this.init();
-        if (!this.ctx) return;
-        const now = this.ctx.currentTime + delay;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.type = type;
-        osc.frequency.setValueAtTime(freq, now);
-        gain.gain.setValueAtTime(gainVal, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.start(now);
-        osc.stop(now + duration);
-      }
+      <!-- Shop Cards Grid -->
+      <div id="shop-items-grid" class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+        <!-- Populated by JS -->
+      </div>
 
-      rollDice() {
-        for (let i = 0; i < 5; i++) {
-          this.playTone(180 + Math.random() * 240, 'triangle', 0.06, 0.09, i * 0.045);
-        }
-      }
+      <!-- Special Dice Modification Section -->
+      <div class="pt-3.5 border-t border-emerald-800/80">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-sky-300">🎲 Forge Special Die ($4)</span>
+            <p class="text-xs text-slate-400">Select one of your 6 dice below to upgrade its material.</p>
+          </div>
+          <select id="shop-die-target" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white font-semibold">
+            <option value="0">Slot 1: Standard Die</option>
+            <option value="1">Slot 2: Standard Die</option>
+            <option value="2">Slot 3: Standard Die</option>
+            <option value="3">Slot 4: Standard Die</option>
+            <option value="4">Slot 5: Standard Die</option>
+            <option value="5">Slot 6: Standard Die</option>
+          </select>
+        </div>
+        <div id="shop-dice-upgrades" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
 
-      selectDie(pitchBoost = 0) {
-        this.playTone(440 + pitchBoost * 55, 'sine', 0.09, 0.11);
-      }
+    <!-- COMBO & RULES REFERENCE MODAL -->
+    <div id="combos-modal" class="hidden w-full max-w-2xl rounded-t-3xl sm:rounded-3xl bg-[#11221e] border-t sm:border border-emerald-600/60 shadow-2xl p-5 sm:p-6 text-slate-100 max-h-[88dvh] overflow-y-auto">
+      <div class="flex items-center justify-between pb-3 border-b border-emerald-800">
+        <h2 class="font-display text-2xl font-bold text-white">Farkle Combinations & Levels</h2>
+        <button id="btn-close-combos" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-sm font-bold text-slate-300">✕ Close</button>
+      </div>
+      <p class="text-xs text-slate-300 mt-3 mb-4 leading-relaxed">
+        Every throw, select at least one valid scoring combination. Choose <strong>Keep & Roll Again</strong> to lock those dice and gain <strong>+0.5x Turn Mult</strong>. If all 6 dice score, you get <strong>HOT DICE</strong> (+2.0x Mult and all 6 dice refresh!). If a roll has zero valid combinations, you <strong>FARKLE</strong> and lose your unbanked Turn Pot.
+      </p>
+      <div id="combos-table" class="space-y-2">
+        <!-- Populated by JS -->
+      </div>
+    </div>
 
-      charmTrigger() {
-        this.playTone(587.33, 'triangle', 0.12, 0.12, 0);
-        this.playTone(880, 'triangle', 0.18, 0.12, 0.07);
-      }
+    <!-- END RUN MODAL (VICTORY / DEFEAT) -->
+    <div id="end-modal" class="hidden w-full max-w-md rounded-t-3xl sm:rounded-3xl bg-[#11221e] border-t sm:border border-rose-500/60 shadow-2xl p-6 text-center text-slate-100">
+      <div id="end-emoji" class="text-5xl mb-3">💀</div>
+      <h2 id="end-title" class="font-display text-3xl font-bold text-white">FARKLED OUT!</h2>
+      <p id="end-subtitle" class="text-sm text-slate-300 mt-2">You ran out of turns before reaching the Blind target.</p>
+      <div class="my-5 p-4 rounded-2xl bg-black/40 border border-slate-800 space-y-2 text-sm">
+        <div class="flex justify-between"><span class="text-slate-400">Reached:</span><strong id="end-ante" class="text-amber-300">Ante 1 • Small Blind</strong></div>
+        <div class="flex justify-between"><span class="text-slate-400">Best Single Bank:</span><strong id="end-best-bank" class="text-emerald-300">0 pts</strong></div>
+        <div class="flex justify-between"><span class="text-slate-400">Total Farkles:</span><strong id="end-farkles" class="text-rose-300">0</strong></div>
+      </div>
+      <button id="btn-restart-run" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-400 hover:to-rose-500 active:scale-95 text-white font-display font-bold text-lg shadow-lg transition">
+        Start New Run
+      </button>
+    </div>
 
-      hotDice() {
-        const notes = [523.25, 659.25, 783.99, 1046.5];
-        notes.forEach((n, idx) => this.playTone(n, 'sawtooth', 0.22, 0.11, idx * 0.07));
-      }
+  </div>
 
-      bankPoints() {
-        this.playTone(523.25, 'sine', 0.14, 0.14, 0);
-        this.playTone(659.25, 'sine', 0.14, 0.14, 0.08);
-        this.playTone(783.99, 'triangle', 0.28, 0.16, 0.16);
-      }
+<script>
+/* ============================================================================
+   1. WEB AUDIO SYNTHESIZER (Tactile Dice Clacks, Bells, Farkle Buzz)
+   ============================================================================ */
+const SoundFX = (() => {
+  let ctx = null;
+  let enabled = true;
 
-      farkle() {
-        this.playTone(190, 'sawtooth', 0.25, 0.15, 0);
-        this.playTone(135, 'sawtooth', 0.42, 0.16, 0.16);
-      }
+  function ensureCtx() {
+    if (!ctx) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) ctx = new AudioCtx();
+    }
+    if (ctx && ctx.state === 'suspended') ctx.resume();
+  }
 
-      cash() {
-        this.playTone(987.77, 'sine', 0.09, 0.12, 0);
-        this.playTone(1318.51, 'sine', 0.25, 0.14, 0.08);
+  function playTone(freq, type, duration, vol = 0.12, delay = 0) {
+    if (!enabled) return;
+    ensureCtx();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+    gain.gain.setValueAtTime(vol, ctx.currentTime + delay);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(ctx.currentTime + delay);
+    osc.stop(ctx.currentTime + delay + duration);
+  }
+
+  return {
+    toggle() {
+      enabled = !enabled;
+      return enabled;
+    },
+    isEnabled: () => enabled,
+    click() {
+      playTone(520, 'triangle', 0.05, 0.08);
+    },
+    roll() {
+      for (let i = 0; i < 4; i++) {
+        playTone(180 + Math.random() * 240, 'square', 0.04, 0.06, i * 0.035);
       }
+    },
+    bank() {
+      playTone(523.25, 'sine', 0.14, 0.14, 0);
+      playTone(659.25, 'sine', 0.14, 0.14, 0.07);
+      playTone(783.99, 'sine', 0.24, 0.16, 0.14);
+    },
+    hotDice() {
+      [523, 659, 783, 1046].forEach((f, idx) => playTone(f, 'triangle', 0.18, 0.15, idx * 0.06));
+    },
+    farkle() {
+      playTone(165, 'sawtooth', 0.25, 0.15, 0);
+      playTone(123, 'sawtooth', 0.35, 0.15, 0.12);
+    },
+    buy() {
+      playTone(880, 'sine', 0.1, 0.12, 0);
+      playTone(1174, 'sine', 0.18, 0.12, 0.06);
+    }
+  };
+})();
+
+/* ============================================================================
+   2. GAME DEFINITIONS (COMBOS, DICE TYPES, CHARMS, BOSS BLINDS)
+   ============================================================================ */
+const COMBO_DEFS = {
+  SINGLE_1:      { id: 'SINGLE_1',      name: 'Single 1',        basePts: 100,  baseMult: 1.0, stepPts: 50,  stepMult: 0.2, desc: 'Each individual 1' },
+  SINGLE_5:      { id: 'SINGLE_5',      name: 'Single 5',        basePts: 50,   baseMult: 1.0, stepPts: 30,  stepMult: 0.2, desc: 'Each individual 5' },
+  THREE_KIND:    { id: 'THREE_KIND',    name: 'Three of a Kind', basePts: 300,  baseMult: 1.2, stepPts: 150, stepMult: 0.3, desc: 'Three matching dice (1s start at 1000)' },
+  FOUR_KIND:     { id: 'FOUR_KIND',     name: 'Four of a Kind',  basePts: 1000, baseMult: 1.5, stepPts: 300, stepMult: 0.4, desc: 'Four matching dice' },
+  FIVE_KIND:     { id: 'FIVE_KIND',     name: 'Five of a Kind',  basePts: 2000, baseMult: 2.0, stepPts: 500, stepMult: 0.5, desc: 'Five matching dice' },
+  SIX_KIND:      { id: 'SIX_KIND',      name: 'Six of a Kind',   basePts: 3000, baseMult: 3.0, stepPts: 800, stepMult: 0.8, desc: 'All six dice identical' },
+  THREE_PAIRS:   { id: 'THREE_PAIRS',   name: 'Three Pairs',     basePts: 1500, baseMult: 1.8, stepPts: 400, stepMult: 0.4, desc: 'Three distinct pairs (e.g., 2-2, 4-4, 6-6)' },
+  FULL_HOUSE:    { id: 'FULL_HOUSE',    name: 'Full House',      basePts: 1200, baseMult: 1.6, stepPts: 350, stepMult: 0.4, desc: 'Three of a kind + a pair' },
+  STRAIGHT:      { id: 'STRAIGHT',      name: '1–6 Straight',    basePts: 1500, baseMult: 2.0, stepPts: 450, stepMult: 0.5, desc: '1, 2, 3, 4, 5, and 6 in one roll' }
+};
+
+const DIE_MATERIALS = {
+  STANDARD: {
+    id: 'STANDARD',
+    name: 'Standard Ivory',
+    badge: 'Std',
+    bgClass: 'bg-slate-100 text-slate-900 border-slate-300',
+    pillClass: 'bg-slate-800 text-slate-200 border-slate-600',
+    desc: 'Balanced 1–6 die.'
+  },
+  GOLD: {
+    id: 'GOLD',
+    name: 'Gilded Die',
+    badge: 'Gold',
+    bgClass: 'bg-amber-200 text-amber-950 border-amber-400',
+    pillClass: 'bg-amber-950/90 text-amber-300 border-amber-500/60',
+    desc: 'Grants +$2 whenever scored in a combination.'
+  },
+  GLASS: {
+    id: 'GLASS',
+    name: 'Prism Glass',
+    badge: 'Glass',
+    bgClass: 'bg-cyan-100 text-cyan-950 border-cyan-400',
+    pillClass: 'bg-cyan-950/90 text-cyan-300 border-cyan-500/60',
+    desc: 'Gives +1.5x Mult when scored, but 1-in-4 chance to revert to Standard after banking.'
+  },
+  WEIGHTED: {
+    id: 'WEIGHTED',
+    name: 'Loaded Ruby',
+    badge: 'Loaded',
+    bgClass: 'bg-rose-200 text-rose-950 border-rose-400',
+    pillClass: 'bg-rose-950/90 text-rose-300 border-rose-500/60',
+    desc: 'Heavily weighted toward rolling 1s and 5s.'
+  },
+  WILD: {
+    id: 'WILD',
+    name: 'Joker Wild',
+    badge: 'Wild',
+    bgClass: 'bg-purple-200 text-purple-950 border-purple-400',
+    pillClass: 'bg-purple-950/90 text-purple-300 border-purple-500/60',
+    desc: '+150 Base Points whenever scored in any combination.'
+  }
+};
+
+const CHARM_POOL = [
+  {
+    id: 'snake_eyes',
+    name: 'Snake Eyes',
+    rarity: 'Uncommon',
+    cost: 5,
+    icon: '🐍',
+    desc: 'If your scored selection contains two or more 1s, add +1.5x Mult.'
+  },
+  {
+    id: 'minimalist',
+    name: 'Minimalist',
+    rarity: 'Common',
+    cost: 4,
+    icon: '🪶',
+    desc: 'When you Bank, gain +75 Base Points for each unused unlocked die.'
+  },
+  {
+    id: 'phoenix_feather',
+    name: 'Phoenix Feather',
+    rarity: 'Rare',
+    cost: 6,
+    icon: '🔥',
+    desc: 'Permanently gains +0.5x Mult every time you Farkle. (Currently +0.0x)',
+    scalingMult: 0
+  },
+  {
+    id: 'safety_net',
+    name: 'Safety Net',
+    rarity: 'Uncommon',
+    cost: 5,
+    icon: '🕸️',
+    desc: 'When you Farkle, salvage 50% of your accumulated Turn Pot into your Round Score.'
+  },
+  {
+    id: 'tax_collector',
+    name: 'Tax Collector',
+    rarity: 'Common',
+    cost: 4,
+    icon: '💰',
+    desc: 'Every Single 5 you score grants +$1 immediately.'
+  },
+  {
+    id: 'high_roller',
+    name: 'High Roller',
+    rarity: 'Rare',
+    cost: 6,
+    icon: '🎰',
+    desc: 'Keeping dice when 2 or fewer dice remain grants +2.0x Mult.'
+  },
+  {
+    id: 'loaded_cup',
+    name: 'Velvet Cup',
+    rarity: 'Uncommon',
+    cost: 5,
+    icon: '🏆',
+    desc: 'Your first roll of every Turn is guaranteed never to Farkle.'
+  },
+  {
+    id: 'odd_fellow',
+    name: 'Odd Fellow',
+    rarity: 'Common',
+    cost: 4,
+    icon: '🎲',
+    desc: '+60 Base Points for every odd-numbered die (1, 3, 5) you score.'
+  },
+  {
+    id: 'combo_king',
+    name: 'Triplet Crown',
+    rarity: 'Rare',
+    cost: 7,
+    icon: '👑',
+    desc: 'Three, Four, Five, and Six of a Kind combinations gain +400 Base Points.'
+  },
+  {
+    id: 'hot_streak',
+    name: 'Molten Core',
+    rarity: 'Uncommon',
+    cost: 5,
+    icon: '🌋',
+    desc: 'Triggering Hot Dice grants an extra +2.0x Mult (total +4.0x).'
+  }
+];
+
+const BOSS_BLINDS = [
+  {
+    id: 'THE_RUST',
+    name: 'The Rust',
+    desc: 'Single 5s are rusted and score 0 points (5s still count in sets & straights).'
+  },
+  {
+    id: 'HEAVY_HAND',
+    name: 'Heavy Hand',
+    desc: 'You cannot Bank until you have pushed your luck at least once (Streak ≥ 1).'
+  },
+  {
+    id: 'THE_TOLLBOOTH',
+    name: 'The Tollbooth',
+    desc: 'Pushing your luck (Keep & Roll Again) costs $1 if you have cash.'
+  },
+  {
+    id: 'LEAD_DICE',
+    name: 'Lead Weights',
+    desc: 'Start each Blind with 1 fewer Turn, but +2 extra Rerolls.'
+  }
+];
+
+/* ============================================================================
+   3. GAME STATE
+   ============================================================================ */
+let state = {};
+
+function createInitialState() {
+  return {
+    ante: 1,
+    blindIndex: 0,
+    bossEffect: null,
+    targetScore: 600,
+    roundScore: 0,
+    turnsLeft: 4,
+    rerollsLeft: 3,
+    money: 4,
+
+    potChips: 0,
+    potMult: 1.0,
+    pushStreak: 0,
+    isFirstRollOfTurn: true,
+
+    dicePool: ['STANDARD', 'STANDARD', 'STANDARD', 'STANDARD', 'STANDARD', 'STANDARD'],
+    currentDice: [],
+
+    comboLevels: {
+      SINGLE_1: 1, SINGLE_5: 1, THREE_KIND: 1, FOUR_KIND: 1,
+      FIVE_KIND: 1, SIX_KIND: 1, THREE_PAIRS: 1, FULL_HOUSE: 1, STRAIGHT: 1
+    },
+    charms: [],
+    shopOffers: [],
+    inspectedItem: null,
+
+    bestBank: 0,
+    totalFarkles: 0,
+    phase: 'PLAYING'
+  };
+}
+
+/* ============================================================================
+   4. FARKLE SCORING ENGINE
+   ============================================================================ */
+function getComboStats(comboId) {
+  const def = COMBO_DEFS[comboId];
+  const lvl = state.comboLevels[comboId] || 1;
+  return {
+    pts: def.basePts + (lvl - 1) * def.stepPts,
+    mult: +(def.baseMult + (lvl - 1) * def.stepMult).toFixed(2),
+    level: lvl,
+    name: def.name
+  };
+}
+
+function evaluateSelection(selectedDice) {
+  if (!selectedDice || selectedDice.length === 0) {
+    return { valid: false, reason: 'Select scoring dice to begin!' };
+  }
+
+  const n = selectedDice.length;
+  const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+  selectedDice.forEach(d => counts[d.value]++);
+
+  const combosTriggered = [];
+  let totalPts = 0;
+  let totalMultBonus = 0;
+  let single5Count = 0;
+  let single1Count = 0;
+
+  if (n === 6) {
+    const isStraight = [1,2,3,4,5,6].every(v => counts[v] === 1);
+    if (isStraight) {
+      const st = getComboStats('STRAIGHT');
+      return buildEvalResult(selectedDice, [st.name], st.pts, st.mult - 1, 0, 0);
     }
 
-    const sfx = new SoundFX();
+    const pairValues = Object.values(counts).filter(c => c === 2);
+    if (pairValues.length === 3) {
+      const st = getComboStats('THREE_PAIRS');
+      return buildEvalResult(selectedDice, [st.name], st.pts, st.mult - 1, 0, 0);
+    }
 
-    // --- Game Data Catalogs ---
-    const DICE_TYPES = {
-      standard: {
-        id: 'standard',
-        name: 'Standard Die',
-        badge: 'STD',
-        desc: 'Balanced 1–6 faces.',
-        css: 'die-type-standard'
-      },
-      gold: {
-        id: 'gold',
-        name: 'Gold Die',
-        badge: 'GOLD',
-        desc: '+$2 if left unscored on the table when Banking.',
-        css: 'die-type-gold'
-      },
-      glass: {
-        id: 'glass',
-        name: 'Glass Die',
-        badge: 'GLASS',
-        desc: '×2 Turn Mult when scored! 25% chance to shatter back to Standard after Banking.',
-        css: 'die-type-glass'
-      },
-      weighted: {
-        id: 'weighted',
-        name: 'Weighted Die',
-        badge: 'HEAVY',
-        desc: 'High odds to roll 1s (35%) and 6s (30%).',
-        css: 'die-type-weighted'
-      },
-      wild: {
-        id: 'wild',
-        name: 'Wild Die',
-        badge: 'WILD',
-        desc: 'Counts as 1 or automatically morphs to complete sets, straights, and pairs.',
-        css: 'die-type-wild'
+    const hasThree = Object.values(counts).includes(3);
+    const hasTwo = Object.values(counts).includes(2);
+    if (hasThree && hasTwo) {
+      const st = getComboStats('FULL_HOUSE');
+      return buildEvalResult(selectedDice, [st.name], st.pts, st.mult - 1, 0, 0);
+    }
+  }
+
+  if (n === 5) {
+    const hasThree = Object.values(counts).includes(3);
+    const hasTwo = Object.values(counts).includes(2);
+    if (hasThree && hasTwo) {
+      const st = getComboStats('FULL_HOUSE');
+      return buildEvalResult(selectedDice, [st.name], st.pts, st.mult - 1, 0, 0);
+    }
+  }
+
+  for (let face = 1; face <= 6; face++) {
+    const c = counts[face];
+    if (c === 0) continue;
+
+    if (c >= 3) {
+      let comboKey = 'THREE_KIND';
+      if (c === 4) comboKey = 'FOUR_KIND';
+      if (c === 5) comboKey = 'FIVE_KIND';
+      if (c === 6) comboKey = 'SIX_KIND';
+
+      const st = getComboStats(comboKey);
+      let pts = st.pts;
+      if (face === 1 && c === 3) {
+        pts = 1000 + (st.level - 1) * COMBO_DEFS.THREE_KIND.stepPts;
+      } else if (c === 3) {
+        pts = face * 100 + (st.level - 1) * COMBO_DEFS.THREE_KIND.stepPts;
       }
-    };
 
-    const CHARM_CATALOG = [
-      {
-        id: 'snake_eyes',
-        name: 'Snake Eyes',
-        icon: '🐍',
-        rarity: 'Uncommon',
-        cost: 5,
-        desc: 'Scoring two or more 1s in a single selection adds +2.0x Mult.'
-      },
-      {
-        id: 'phoenix_feather',
-        name: 'Phoenix Feather',
-        icon: '🪶',
-        rarity: 'Rare',
-        cost: 6,
-        desc: 'Gain +0.5x permanent starting Turn Mult every time you Farkle.'
-      },
-      {
-        id: 'minimalist',
-        name: 'Minimalist',
-        icon: '🧘',
-        rarity: 'Common',
-        cost: 4,
-        desc: '+150 Base Points for each unused die left on the table when you Bank.'
-      },
-      {
-        id: 'safety_net',
-        name: 'Safety Net',
-        icon: '🕸️',
-        rarity: 'Uncommon',
-        cost: 5,
-        desc: 'Keep 50% of your Turn Base Points (at 1x Mult) when you Farkle.'
-      },
-      {
-        id: 'loaded_cup',
-        name: 'Loaded Cup',
-        icon: '🏆',
-        rarity: 'Rare',
-        cost: 6,
-        desc: 'Your first roll of every turn is guaranteed not to Farkle.'
-      },
-      {
-        id: 'tax_collector',
-        name: 'Tax Collector',
-        icon: '💼',
-        rarity: 'Common',
-        cost: 4,
-        desc: 'Every single 5 scored grants +$1 immediately.'
-      },
-      {
-        id: 'high_roller',
-        name: 'High Roller',
-        icon: '🔥',
-        rarity: 'Uncommon',
-        cost: 5,
-        desc: 'Rolling with only 1 or 2 active dice grants +2.5x Mult if you score.'
-      },
-      {
-        id: 'triple_threat',
-        name: 'Triple Threat',
-        icon: '🔱',
-        rarity: 'Uncommon',
-        cost: 5,
-        desc: 'Any 3-of-a-Kind or better adds +1.5x Mult.'
-      },
-      {
-        id: 'greedy_goblin',
-        name: 'Greedy Goblin',
-        icon: '👺',
-        rarity: 'Common',
-        cost: 4,
-        desc: 'Each Keep & Roll push gives +0.75x Mult instead of +0.5x.'
-      },
-      {
-        id: 'ace_of_spades',
-        name: 'Ace High',
-        icon: '♠️',
-        rarity: 'Common',
-        cost: 4,
-        desc: 'Single 1s score +75 extra Base Points.'
-      }
-    ];
+      if (hasCharm('combo_king')) pts += 400;
 
-    const MANUAL_CATALOG = [
-      {
-        id: 'manual_singles',
-        name: 'Manual: Sharp Singles',
-        icon: '📘',
-        comboKey: 'singles',
-        cost: 3,
-        desc: 'Level up Single 1s (+40 Base) & Single 5s (+25 Base).'
-      },
-      {
-        id: 'manual_sets',
-        name: 'Manual: Heavy Sets',
-        icon: '📕',
-        comboKey: 'sets',
-        cost: 3,
-        desc: 'Level up 3/4/5/6-of-a-Kind (+250 Base & +0.5x Mult).'
-      },
-      {
-        id: 'manual_specials',
-        name: 'Manual: Grand Patterns',
-        icon: '📗',
-        comboKey: 'specials',
-        cost: 4,
-        desc: 'Level up Straights, Three Pairs & Full Houses (+500 Base & +1.0x Mult).'
-      }
-    ];
-
-    const BOSS_BLINDS = [
-      {
-        name: 'The Rust',
-        ruleId: 'no_single_5',
-        desc: 'Single 5s give 0 Base Points (must be in a Set, Pair, or Straight).'
-      },
-      {
-        name: 'Heavy Hand',
-        ruleId: 'min_two_rolls',
-        desc: 'You must Keep & Roll at least once before Banking (unless Hot Dice).'
-      },
-      {
-        name: 'The Tollbooth',
-        ruleId: 'farkle_tax',
-        desc: 'Farkling costs $2 (if you have cash).'
-      },
-      {
-        name: 'Lead Dice',
-        ruleId: 'lower_push_mult',
-        desc: 'Pushing your luck only adds +0.25x Mult per roll.'
-      }
-    ];
-
-    // --- Main Game State ---
-    let state = {};
-
-    function createInitialState() {
-      return {
-        ante: 1,
-        blindIndex: 0,
-        bossRule: null,
-        targetScore: 600,
-        roundScore: 0,
-        turnsLeft: 4,
-        maxTurns: 4,
-        rerollsLeft: 3,
-        maxRerolls: 3,
-        money: 4,
-        permanentStartMult: 1.0,
-        charms: [],
-        maxCharms: 5,
-        comboLevels: {
-          singles: 1,
-          sets: 1,
-          specials: 1
-        },
-        cup: ['standard', 'standard', 'standard', 'standard', 'standard', 'standard'],
-        dice: [],
-        turnBase: 0,
-        turnMult: 1.0,
-        pushCount: 0,
-        isFirstRollOfTurn: true,
-        turnState: 'ROLLING',
-        shopItems: [],
-        shopRerollCost: 3,
-        lastPayoutText: '',
-        inspectedItem: null,
-        stats: {
-          bestTurn: 0,
-          totalFarkles: 0
+      combosTriggered.push(`${st.name} (${face}s)`);
+      totalPts += pts;
+      totalMultBonus += (st.mult - 1);
+      if (face === 1) single1Count += c;
+    } else {
+      if (face === 1) {
+        const st = getComboStats('SINGLE_1');
+        combosTriggered.push(c === 2 ? 'Two 1s' : 'Single 1');
+        totalPts += st.pts * c;
+        totalMultBonus += (st.mult - 1) * c;
+        single1Count += c;
+      } else if (face === 5) {
+        if (state.bossEffect === 'THE_RUST') {
+          return { valid: false, reason: 'Boss Rule (The Rust): Single 5s cannot score!' };
         }
-      };
-    }
-
-    function openInspectDrawer(payload) {
-      state.inspectedItem = payload;
-      sfx.selectDie(1);
-      renderInspectDrawer();
-    }
-
-    function closeInspectDrawer() {
-      state.inspectedItem = null;
-      renderInspectDrawer();
-    }
-
-    function renderInspectDrawer() {
-      const drawer = document.getElementById('inspect-drawer');
-      if (!state.inspectedItem) {
-        drawer.classList.add('hidden');
-        return;
-      }
-      const item = state.inspectedItem;
-      document.getElementById('inspect-icon').textContent = item.icon || '✨';
-      document.getElementById('inspect-badge').textContent = item.badge || 'INFO';
-      document.getElementById('inspect-title').textContent = item.title;
-      document.getElementById('inspect-desc').textContent = item.desc;
-
-      const sellBtn = document.getElementById('btn-inspect-sell');
-      if (item.kind === 'charm' && typeof item.index === 'number' && state.charms[item.index]) {
-        sellBtn.classList.remove('hidden');
-        sellBtn.textContent = `Sell +$${item.sellValue}`;
+        const st = getComboStats('SINGLE_5');
+        combosTriggered.push(c === 2 ? 'Two 5s' : 'Single 5');
+        totalPts += st.pts * c;
+        totalMultBonus += (st.mult - 1) * c;
+        single5Count += c;
       } else {
-        sellBtn.classList.add('hidden');
-      }
-      drawer.classList.remove('hidden');
-    }
-
-    // --- Blind Scaling Logic ---
-    function setupBlind(ante, blindIndex) {
-      state.ante = ante;
-      state.blindIndex = blindIndex;
-      const baseTargets = [600, 1000, 1600];
-      const anteScale = Math.pow(2.15, ante - 1);
-      state.targetScore = Math.round((baseTargets[blindIndex] * anteScale) / 50) * 50;
-      state.roundScore = 0;
-      state.turnsLeft = state.maxTurns;
-      state.rerollsLeft = state.maxRerolls;
-      state.turnState = 'ROLLING';
-
-      if (blindIndex === 2) {
-        state.bossRule = BOSS_BLINDS[(ante - 1) % BOSS_BLINDS.length];
-      } else {
-        state.bossRule = null;
-      }
-
-      startNewTurn();
-    }
-
-    function hasCharm(id) {
-      return state.charms.some(c => c.id === id);
-    }
-
-    function triggerCharmAnimation(id) {
-      const el = document.querySelector(`[data-charm-id="${id}"]`);
-      if (el) {
-        el.classList.remove('charm-triggered');
-        void el.offsetWidth;
-        el.classList.add('charm-triggered');
-      }
-      sfx.charmTrigger();
-    }
-
-    // --- Rolling & Dice Face Generation ---
-    function rollSingleDieValue(type) {
-      if (type === 'weighted') {
-        const r = Math.random();
-        if (r < 0.35) return 1;
-        if (r < 0.65) return 6;
-        return [2, 3, 4, 5][Math.floor(Math.random() * 4)];
-      }
-      return Math.floor(Math.random() * 6) + 1;
-    }
-
-    function startNewTurn() {
-      state.turnBase = 0;
-      state.turnMult = state.permanentStartMult;
-      state.pushCount = 0;
-      state.isFirstRollOfTurn = true;
-      state.turnState = 'ROLLING';
-      hideEventBanner();
-
-      state.dice = state.cup.map((type, idx) => ({
-        id: idx,
-        type,
-        value: rollSingleDieValue(type),
-        locked: false,
-        selected: false,
-        rolling: true
-      }));
-
-      if (hasCharm('loaded_cup')) {
-        let safety = 0;
-        while (!hasAnyScoringOption(state.dice) && safety < 25) {
-          state.dice.forEach(d => { d.value = rollSingleDieValue(d.type); });
-          safety++;
-        }
-      }
-
-      sfx.rollDice();
-      checkFarkleAfterRoll();
-      renderAll();
-      clearRollingFlags();
-    }
-
-    function clearRollingFlags() {
-      setTimeout(() => {
-        state.dice.forEach(d => d.rolling = false);
-        renderDice();
-      }, 360);
-    }
-
-    // --- Farkle Scoring & Wild Die Evaluator ---
-    function evaluateSelection(selectedDice) {
-      if (!selectedDice || selectedDice.length === 0) {
-        return { valid: false, base: 0, multAdd: 0, multMultiply: 1, label: 'Select scoring dice' };
-      }
-
-      const wildIndices = [];
-      const fixedValues = [];
-      selectedDice.forEach((d, idx) => {
-        if (d.type === 'wild') wildIndices.push(idx);
-        else fixedValues.push(d.value);
-      });
-
-      let bestResult = { valid: false, base: -1, multAdd: 0, multMultiply: 1, label: 'Invalid selection' };
-
-      const totalCombos = Math.pow(6, wildIndices.length);
-      for (let mask = 0; mask < totalCombos; mask++) {
-        const assigned = [...fixedValues];
-        let temp = mask;
-        for (let w = 0; w < wildIndices.length; w++) {
-          assigned.push((temp % 6) + 1);
-          temp = Math.floor(temp / 6);
-        }
-        const res = evaluateConcreteValues(assigned, selectedDice);
-        if (res.valid) {
-          const scoreMetric = res.base * (1 + res.multAdd) * res.multMultiply;
-          const bestMetric = bestResult.base * (1 + bestResult.multAdd) * bestResult.multMultiply;
-          if (!bestResult.valid || scoreMetric > bestMetric) {
-            bestResult = res;
-          }
-        }
-      }
-
-      return bestResult;
-    }
-
-    function evaluateConcreteValues(values, selectedDice) {
-      const n = values.length;
-      const counts = [0, 0, 0, 0, 0, 0, 0];
-      values.forEach(v => counts[v]++);
-
-      const singlesLv = state.comboLevels.singles;
-      const setsLv = state.comboLevels.sets;
-      const specialsLv = state.comboLevels.specials;
-
-      const single1Val = 100 + (singlesLv - 1) * 40 + (hasCharm('ace_of_spades') ? 75 : 0);
-      const isRustBoss = state.bossRule && state.bossRule.ruleId === 'no_single_5';
-      const single5Val = isRustBoss ? 0 : (50 + (singlesLv - 1) * 25);
-
-      let base = 0;
-      let multAdd = 0;
-      let multMultiply = 1;
-      const parts = [];
-
-      const glassCount = selectedDice.filter(d => d.type === 'glass').length;
-      if (glassCount > 0) {
-        multMultiply *= Math.pow(2, glassCount);
-      }
-
-      if (n === 6) {
-        if ([1, 2, 3, 4, 5, 6].every(face => counts[face] === 1)) {
-          base = 1500 + (specialsLv - 1) * 500;
-          multAdd += 1.0 + (specialsLv - 1) * 1.0;
-          return {
-            valid: true,
-            base,
-            multAdd,
-            multMultiply,
-            label: `1–6 STRAIGHT! (+${base} pts)`,
-            singleOnes: 1,
-            singleFives: 1,
-            hasSet: false
-          };
-        }
-
-        const pairGroups = counts.filter(c => c === 2).length;
-        const fourGroups = counts.filter(c => c === 4).length;
-        if (pairGroups === 3 || (fourGroups === 1 && pairGroups === 1)) {
-          base = 1500 + (specialsLv - 1) * 500;
-          multAdd += 1.0 + (specialsLv - 1) * 1.0;
-          return {
-            valid: true,
-            base,
-            multAdd,
-            multMultiply,
-            label: `THREE PAIRS! (+${base} pts)`,
-            singleOnes: counts[1],
-            singleFives: counts[5],
-            hasSet: false
-          };
-        }
-      }
-
-      if (n === 5) {
-        const threeFace = counts.findIndex(c => c === 3);
-        const twoFace = counts.findIndex(c => c === 2);
-        if (threeFace !== -1 && twoFace !== -1) {
-          const threeBase = threeFace === 1 ? 1000 : threeFace * 100;
-          base = threeBase + 250 + (specialsLv - 1) * 500;
-          multAdd += 0.5 + (specialsLv - 1) * 1.0;
-          if (hasCharm('triple_threat')) multAdd += 1.5;
-          return {
-            valid: true,
-            base,
-            multAdd,
-            multMultiply,
-            label: `FULL HOUSE! (+${base} pts)`,
-            singleOnes: counts[1],
-            singleFives: counts[5],
-            hasSet: true
-          };
-        }
-      }
-
-      let hasSet = false;
-      for (let face = 1; face <= 6; face++) {
-        const c = counts[face];
-        if (c === 0) continue;
-
-        if (c >= 3) {
-          hasSet = true;
-          let setBase = face === 1 ? 1000 : face * 100;
-          if (c === 4) setBase *= 2;
-          if (c === 5) setBase *= 4;
-          if (c === 6) setBase *= 8;
-          setBase += (setsLv - 1) * 250;
-          multAdd += (setsLv - 1) * 0.5;
-          if (hasCharm('triple_threat')) multAdd += 1.5;
-          base += setBase;
-          parts.push(`${c}× ${face}s`);
-        } else {
-          if (face === 1) {
-            base += c * single1Val;
-            parts.push(`${c}× 1`);
-          } else if (face === 5) {
-            if (isRustBoss) {
-              return { valid: false, base: 0, multAdd: 0, multMultiply: 1, label: 'The Rust: Single 5s worth 0!' };
-            }
-            base += c * single5Val;
-            parts.push(`${c}× 5`);
-          } else {
-            return { valid: false, base: 0, multAdd: 0, multMultiply: 1, label: `Die ${face} doesn't score alone` };
-          }
-        }
-      }
-
-      if (hasCharm('snake_eyes') && counts[1] >= 2) {
-        multAdd += 2.0;
-      }
-
-      return {
-        valid: base > 0,
-        base,
-        multAdd,
-        multMultiply,
-        label: parts.join(' + ') + ` (+${base} pts)`,
-        singleOnes: counts[1] < 3 ? counts[1] : 0,
-        singleFives: counts[5] < 3 ? counts[5] : 0,
-        hasSet
-      };
-    }
-
-    function findBestAutoSelection(diceList) {
-      const unlocked = diceList.filter(d => !d.locked);
-      const m = unlocked.length;
-      let bestSubset = [];
-      let bestEval = null;
-
-      for (let mask = 1; mask < (1 << m); mask++) {
-        const subset = [];
-        for (let i = 0; i < m; i++) {
-          if (mask & (1 << i)) subset.push(unlocked[i]);
-        }
-        const ev = evaluateSelection(subset);
-        if (ev.valid) {
-          const evScore = (subset.length === m ? 100000 : 0) + ev.base * (1 + ev.multAdd) * ev.multMultiply;
-          const bestScore = bestEval ? ((bestSubset.length === m ? 100000 : 0) + bestEval.base * (1 + bestEval.multAdd) * bestEval.multMultiply) : -1;
-          if (evScore > bestScore) {
-            bestSubset = subset;
-            bestEval = ev;
-          }
-        }
-      }
-      return bestSubset;
-    }
-
-    function hasAnyScoringOption(diceList) {
-      return findBestAutoSelection(diceList).length > 0;
-    }
-
-    // --- Turn Actions ---
-    function checkFarkleAfterRoll() {
-      if (!hasAnyScoringOption(state.dice)) {
-        state.turnState = 'FARKLED';
-        state.stats.totalFarkles++;
-        sfx.farkle();
-
-        const playArena = document.getElementById('play-arena');
-        playArena.classList.remove('animate-farkle-shake');
-        void playArena.offsetWidth;
-        playArena.classList.add('animate-farkle-shake');
-
-        let extraNotes = [];
-
-        if (state.bossRule && state.bossRule.ruleId === 'farkle_tax' && state.money > 0) {
-          const loss = Math.min(2, state.money);
-          state.money -= loss;
-          extraNotes.push(`Boss Tollbooth: -$${loss}`);
-        }
-
-        if (hasCharm('phoenix_feather')) {
-          state.permanentStartMult += 0.5;
-          triggerCharmAnimation('phoenix_feather');
-          extraNotes.push(`Phoenix Feather: Permanent Start Mult is now ${state.permanentStartMult.toFixed(1)}x!`);
-        }
-
-        let salvaged = 0;
-        if (hasCharm('safety_net') && state.turnBase > 0) {
-          salvaged = Math.floor(state.turnBase * 0.5);
-          state.roundScore += salvaged;
-          triggerCharmAnimation('safety_net');
-          extraNotes.push(`Safety Net salvaged +${salvaged} pts!`);
-        }
-
-        showEventBanner(
-          '💥 FARKLE! 💥',
-          `No scoring dice! Lost ${state.turnBase} unbanked Base Points. ${extraNotes.join(' • ')}`,
-          'bg-rose-950/90 border-rose-500 text-rose-200'
-        );
-
-        spawnFloatingText(window.innerWidth / 2, window.innerHeight * 0.42, 'FARKLE!', '#f43f5e');
-
-        setTimeout(() => {
-          if (state.roundScore >= state.targetScore) {
-            handleBlindCleared();
-          } else {
-            advanceTurnAfterEnd();
-          }
-        }, 1650);
+        return { valid: false, reason: `Invalid selection: ${face}s must be part of a set or straight.` };
       }
     }
+  }
 
-    function commitSelectedDiceToPot(evalRes) {
-      const selected = state.dice.filter(d => d.selected && !d.locked);
-      const activeBeforeLock = state.dice.filter(d => !d.locked).length;
+  return buildEvalResult(selectedDice, combosTriggered, totalPts, totalMultBonus, single1Count, single5Count);
+}
 
-      if (hasCharm('tax_collector') && evalRes.singleFives > 0) {
-        state.money += evalRes.singleFives;
-        triggerCharmAnimation('tax_collector');
-        spawnFloatingText(window.innerWidth * 0.55, window.innerHeight * 0.45, `+$${evalRes.singleFives} Tax!`, '#fbbf24');
+function buildEvalResult(selectedDice, combosTriggered, basePts, multBonus, single1Count, single5Count) {
+  let pts = basePts;
+  let multAdd = multBonus;
+  let cashEarned = 0;
+
+  selectedDice.forEach(d => {
+    if (d.material === 'GOLD') cashEarned += 2;
+    if (d.material === 'GLASS') multAdd += 1.5;
+    if (d.material === 'WILD') pts += 150;
+  });
+
+  if (hasCharm('snake_eyes') && selectedDice.filter(d => d.value === 1).length >= 2) {
+    multAdd += 1.5;
+  }
+  if (hasCharm('odd_fellow')) {
+    const oddCount = selectedDice.filter(d => d.value % 2 === 1).length;
+    pts += oddCount * 60;
+  }
+  if (hasCharm('tax_collector') && single5Count > 0) {
+    cashEarned += single5Count * 1;
+  }
+
+  return {
+    valid: true,
+    label: combosTriggered.join(' + '),
+    pts,
+    multAdd: +multAdd.toFixed(2),
+    cashEarned
+  };
+}
+
+function rollHasAnyValidMove(diceList) {
+  const unlocked = diceList.filter(d => !d.locked);
+  if (unlocked.length === 0) return false;
+  const n = unlocked.length;
+  const totalMasks = 1 << n;
+  for (let mask = 1; mask < totalMasks; mask++) {
+    const subset = [];
+    for (let i = 0; i < n; i++) {
+      if (mask & (1 << i)) subset.push(unlocked[i]);
+    }
+    if (evaluateSelection(subset).valid) return true;
+  }
+  return false;
+}
+
+function findBestAutoSelection(diceList) {
+  const unlocked = diceList.filter(d => !d.locked);
+  const n = unlocked.length;
+  let bestMask = 0;
+  let bestScore = -1;
+
+  for (let mask = 1; mask < (1 << n); mask++) {
+    const subset = [];
+    for (let i = 0; i < n; i++) {
+      if (mask & (1 << i)) subset.push(unlocked[i]);
+    }
+    const res = evaluateSelection(subset);
+    if (res.valid) {
+      const heuristic = res.pts * (1 + res.multAdd) + subset.length * 15;
+      if (heuristic > bestScore) {
+        bestScore = heuristic;
+        bestMask = mask;
       }
+    }
+  }
 
-      if (hasCharm('high_roller') && activeBeforeLock <= 2) {
-        evalRes.multAdd += 2.5;
-        triggerCharmAnimation('high_roller');
-      }
+  const ids = new Set();
+  for (let i = 0; i < n; i++) {
+    if (bestMask & (1 << i)) ids.add(unlocked[i].id);
+  }
+  return ids;
+}
 
-      if (hasCharm('snake_eyes') && evalRes.singleOnes >= 2) {
-        triggerCharmAnimation('snake_eyes');
-      }
-      if (hasCharm('triple_threat') && evalRes.hasSet) {
-        triggerCharmAnimation('triple_threat');
-      }
+/* ============================================================================
+   5. DICE ROLLING & TURN FLOW
+   ============================================================================ */
+function hasCharm(id) {
+  return state.charms.some(c => c.id === id);
+}
 
-      selected.forEach(d => {
-        d.locked = true;
-        d.selected = false;
-      });
+function getCharm(id) {
+  return state.charms.find(c => c.id === id);
+}
 
-      state.turnBase += evalRes.base;
-      state.turnMult = Number(((state.turnMult + evalRes.multAdd) * evalRes.multMultiply).toFixed(2));
+function rollSingleDieValue(material) {
+  if (material === 'WEIGHTED') {
+    const table = [1, 1, 5, 5, 2, 3, 4, 6];
+    return table[Math.floor(Math.random() * table.length)];
+  }
+  return Math.floor(Math.random() * 6) + 1;
+}
+
+function startBlind() {
+  const baseTargets = [600, 1000, 1600];
+  const anteScale = Math.pow(1.85, state.ante - 1);
+  state.targetScore = Math.round((baseTargets[state.blindIndex] * anteScale) / 50) * 50;
+  state.roundScore = 0;
+
+  if (state.blindIndex === 2) {
+    const boss = BOSS_BLINDS[(state.ante - 1) % BOSS_BLINDS.length];
+    state.bossEffect = boss.id;
+  } else {
+    state.bossEffect = null;
+  }
+
+  state.turnsLeft = state.bossEffect === 'LEAD_DICE' ? 3 : 4;
+  state.rerollsLeft = state.bossEffect === 'LEAD_DICE' ? 5 : 3;
+  state.phase = 'PLAYING';
+  state.inspectedItem = null;
+
+  startNewTurn(true);
+}
+
+function startNewTurn(skipSound = false) {
+  state.potChips = 0;
+  state.potMult = 1.0;
+
+  const phoenix = getCharm('phoenix_feather');
+  if (phoenix && phoenix.scalingMult > 0) {
+    state.potMult = +(state.potMult + phoenix.scalingMult).toFixed(2);
+  }
+
+  state.pushStreak = 0;
+  state.isFirstRollOfTurn = true;
+
+  state.currentDice = state.dicePool.map((mat, idx) => ({
+    id: idx,
+    value: rollSingleDieValue(mat),
+    material: mat,
+    locked: false,
+    selected: false
+  }));
+
+  if (hasCharm('loaded_cup') && !rollHasAnyValidMove(state.currentDice)) {
+    state.currentDice.forEach(d => {
+      if (d.material !== 'WEIGHTED') d.value = 1;
+    });
+    state.currentDice[0].value = 1;
+  }
+
+  if (!skipSound) SoundFX.roll();
+  renderAll(true);
+  checkForFarkle();
+}
+
+function checkForFarkle() {
+  if (state.phase !== 'PLAYING') return;
+
+  if (!rollHasAnyValidMove(state.currentDice)) {
+    SoundFX.farkle();
+    state.totalFarkles++;
+    const arena = document.getElementById('dice-arena');
+    arena.classList.remove('animate-shake');
+    void arena.offsetWidth;
+    arena.classList.add('animate-shake');
+
+    const phoenix = getCharm('phoenix_feather');
+    if (phoenix) {
+      phoenix.scalingMult = +(phoenix.scalingMult + 0.5).toFixed(2);
+      phoenix.desc = `Permanently gains +0.5x Mult every time you Farkle. (Currently +${phoenix.scalingMult.toFixed(1)}x)`;
     }
 
-    function handlePushRoll() {
-      if (state.turnState !== 'ROLLING') return;
-      const selected = state.dice.filter(d => d.selected && !d.locked);
-      const evalRes = evaluateSelection(selected);
-      if (!evalRes.valid) return;
-
-      commitSelectedDiceToPot(evalRes);
-      state.pushCount++;
-      state.isFirstRollOfTurn = false;
-
-      let pushStep = hasCharm('greedy_goblin') ? 0.75 : 0.5;
-      if (state.bossRule && state.bossRule.ruleId === 'lower_push_mult') pushStep = 0.25;
-      if (hasCharm('greedy_goblin')) triggerCharmAnimation('greedy_goblin');
-
-      state.turnMult = Number((state.turnMult + pushStep).toFixed(2));
-
-      const remainingUnlocked = state.dice.filter(d => !d.locked);
-      if (remainingUnlocked.length === 0) {
-        sfx.hotDice();
-        state.turnMult = Number((state.turnMult + 2.0).toFixed(2));
-        state.dice.forEach(d => {
-          d.locked = false;
-          d.selected = false;
-          d.value = rollSingleDieValue(d.type);
-          d.rolling = true;
-        });
-        showEventBanner(
-          '🔥 HOT DICE! +2.0x MULT! 🔥',
-          'All 6 dice scored! Fresh set of 6 dice rolled—keep the streak alive or Bank!',
-          'bg-emerald-950/90 border-emerald-400 text-emerald-200'
-        );
-        spawnFloatingText(window.innerWidth / 2, window.innerHeight * 0.38, 'HOT DICE! +2.0x', '#34d399');
-      } else {
-        hideEventBanner();
-        sfx.rollDice();
-        remainingUnlocked.forEach(d => {
-          d.value = rollSingleDieValue(d.type);
-          d.rolling = true;
-        });
-        spawnFloatingText(window.innerWidth / 2, window.innerHeight * 0.45, `+${evalRes.base} Base • +${pushStep}x Mult`, '#60a5fa');
-      }
-
-      checkFarkleAfterRoll();
-      renderAll();
-      clearRollingFlags();
+    let salvaged = 0;
+    if (hasCharm('safety_net') && state.potChips > 0) {
+      salvaged = Math.round((state.potChips * state.potMult) * 0.5);
+      state.roundScore += salvaged;
+      showToast(`FARKLE! Safety Net saved +${salvaged} pts`, 'text-amber-300');
+    } else {
+      showToast('FARKLE! Turn Pot Lost!', 'text-rose-400');
     }
 
-    function handleBankPoints() {
-      if (state.turnState !== 'ROLLING') return;
+    state.turnsLeft--;
 
-      if (state.bossRule && state.bossRule.ruleId === 'min_two_rolls' && state.pushCount < 1) {
-        showEventBanner(
-          '👹 BOSS RULE: HEAVY HAND',
-          'You must Keep & Roll at least once before Banking this turn!',
-          'bg-rose-950/90 border-rose-500 text-rose-200'
-        );
-        return;
-      }
-
-      const selected = state.dice.filter(d => d.selected && !d.locked);
-      if (selected.length > 0) {
-        const evalRes = evaluateSelection(selected);
-        if (!evalRes.valid) return;
-        commitSelectedDiceToPot(evalRes);
-      }
-
-      if (state.turnBase <= 0) return;
-
-      const unscoredDice = state.dice.filter(d => !d.locked);
-      let bonusNotes = [];
-
-      const goldUnscored = unscoredDice.filter(d => d.type === 'gold').length;
-      if (goldUnscored > 0) {
-        const goldCash = goldUnscored * 2;
-        state.money += goldCash;
-        bonusNotes.push(`Gold Dice: +$${goldCash}`);
-      }
-
-      if (hasCharm('minimalist') && unscoredDice.length > 0) {
-        const bonusPts = unscoredDice.length * 150;
-        state.turnBase += bonusPts;
-        triggerCharmAnimation('minimalist');
-        bonusNotes.push(`Minimalist: +${bonusPts} Base`);
-      }
-
-      let shatteredCount = 0;
-      state.dice.forEach((d, idx) => {
-        if (d.type === 'glass' && d.locked && Math.random() < 0.25) {
-          state.cup[idx] = 'standard';
-          shatteredCount++;
-        }
-      });
-      if (shatteredCount > 0) {
-        bonusNotes.push(`💔 ${shatteredCount} Glass Die shattered!`);
-      }
-
-      const totalBanked = Math.round(state.turnBase * state.turnMult);
-      state.roundScore += totalBanked;
-      if (totalBanked > state.stats.bestTurn) state.stats.bestTurn = totalBanked;
-
-      sfx.bankPoints();
-      spawnFloatingText(window.innerWidth * 0.35, window.innerHeight * 0.35, `+${totalBanked.toLocaleString()} PTS!`, '#fbbf24');
-
-      if (bonusNotes.length > 0) {
-        showEventBanner(
-          `💰 BANKED ${totalBanked.toLocaleString()} PTS!`,
-          bonusNotes.join(' • '),
-          'bg-amber-950/90 border-amber-400 text-amber-200'
-        );
-      }
-
+    setTimeout(() => {
       if (state.roundScore >= state.targetScore) {
-        setTimeout(() => handleBlindCleared(), 650);
-      } else {
-        advanceTurnAfterEnd();
-      }
-      renderAll();
-    }
-
-    function handleSafeReroll() {
-      if (state.turnState !== 'ROLLING' || state.rerollsLeft <= 0) return;
-      const unlocked = state.dice.filter(d => !d.locked);
-      if (unlocked.length === 0) return;
-
-      state.rerollsLeft--;
-      sfx.rollDice();
-      hideEventBanner();
-
-      unlocked.forEach(d => {
-        d.selected = false;
-        d.value = rollSingleDieValue(d.type);
-        d.rolling = true;
-      });
-
-      checkFarkleAfterRoll();
-      renderAll();
-      clearRollingFlags();
-    }
-
-    function advanceTurnAfterEnd() {
-      state.turnsLeft--;
-      if (state.turnsLeft <= 0) {
-        state.turnState = 'GAMEOVER';
-        renderAll();
+        onBlindWon();
+      } else if (state.turnsLeft <= 0) {
+        onGameOver();
       } else {
         startNewTurn();
       }
-    }
+    }, 1050);
+  }
+}
 
-    // --- Blind Cleared & Shop Generation ---
-    function handleBlindCleared() {
-      sfx.cash();
-      const baseRewards = [4, 5, 7];
-      const basePay = baseRewards[state.blindIndex] || 5;
-      const turnBonus = Math.max(0, state.turnsLeft - 1);
-      const totalEarned = basePay + turnBonus;
-      state.money += totalEarned;
-      state.lastPayoutText = `Earned $${basePay} Blind Bounty + $${turnBonus} Unused Turns Bonus = +$${totalEarned}!`;
-      state.shopRerollCost = 3;
-      state.turnState = 'SHOP';
-      generateShopInventory();
-      renderAll();
-    }
+function handleKeepAndRoll() {
+  const selected = state.currentDice.filter(d => d.selected && !d.locked);
+  const evalRes = evaluateSelection(selected);
+  if (!evalRes.valid) return;
 
-    function generateShopInventory() {
-      const items = [];
+  if (state.bossEffect === 'THE_TOLLBOOTH' && state.money > 0) {
+    state.money -= 1;
+    showToast('Tollbooth: -$1', 'text-amber-300');
+  }
 
-      const unownedCharms = CHARM_CATALOG.filter(c => !hasCharm(c.id));
-      if (unownedCharms.length > 0) {
-        const pick = unownedCharms[Math.floor(Math.random() * unownedCharms.length)];
-        items.push({ kind: 'charm', data: pick, sold: false });
-      } else {
-        const manual = MANUAL_CATALOG[Math.floor(Math.random() * MANUAL_CATALOG.length)];
-        items.push({ kind: 'manual', data: manual, sold: false });
-      }
+  state.potChips += evalRes.pts;
+  state.potMult = +(state.potMult + evalRes.multAdd).toFixed(2);
+  if (evalRes.cashEarned > 0) {
+    state.money += evalRes.cashEarned;
+    showToast(`+$${evalRes.cashEarned} Cash!`, 'text-amber-300');
+  }
 
-      const manualPick = MANUAL_CATALOG[Math.floor(Math.random() * MANUAL_CATALOG.length)];
-      items.push({ kind: 'manual', data: manualPick, sold: false });
+  selected.forEach(d => {
+    d.locked = true;
+    d.selected = false;
+  });
 
-      const specialDieKeys = ['gold', 'glass', 'weighted', 'wild'];
-      const dKey = specialDieKeys[Math.floor(Math.random() * specialDieKeys.length)];
-      items.push({
-        kind: 'die',
-        data: {
-          ...DICE_TYPES[dKey],
-          cost: dKey === 'wild' ? 5 : 4
-        },
-        sold: false
-      });
+  state.pushStreak++;
+  state.isFirstRollOfTurn = false;
+  state.potMult = +(state.potMult + 0.5).toFixed(2);
 
-      state.shopItems = items;
-    }
+  const remainingUnlocked = state.currentDice.filter(d => !d.locked);
 
-    function buyShopItem(index) {
-      const item = state.shopItems[index];
-      if (!item || item.sold || state.money < item.data.cost) return;
+  if (hasCharm('high_roller') && remainingUnlocked.length > 0 && remainingUnlocked.length <= 2) {
+    state.potMult = +(state.potMult + 2.0).toFixed(2);
+    showToast('High Roller! +2.0x Mult', 'text-purple-300');
+  }
 
-      if (item.kind === 'charm') {
-        if (state.charms.length >= state.maxCharms) {
-          spawnFloatingText(window.innerWidth / 2, window.innerHeight * 0.3, 'Charm Slots Full (5/5)! Sell one first.', '#f43f5e');
-          return;
-        }
-        state.money -= item.data.cost;
-        state.charms.push({ ...item.data });
-        item.sold = true;
-        sfx.cash();
-      } else if (item.kind === 'manual') {
-        state.money -= item.data.cost;
-        state.comboLevels[item.data.comboKey]++;
-        item.sold = true;
-        sfx.hotDice();
-        spawnFloatingText(window.innerWidth / 2, window.innerHeight * 0.35, `${item.data.name} Lv.${state.comboLevels[item.data.comboKey]}!`, '#38bdf8');
-      } else if (item.kind === 'die') {
-        state.money -= item.data.cost;
-        const stdIdx = state.cup.findIndex(t => t === 'standard');
-        const targetIdx = stdIdx !== -1 ? stdIdx : Math.floor(Math.random() * 6);
-        state.cup[targetIdx] = item.data.id;
-        item.sold = true;
-        sfx.cash();
-        spawnFloatingText(window.innerWidth / 2, window.innerHeight * 0.35, `Die #${targetIdx + 1} upgraded to ${item.data.name}!`, '#fbbf24');
-      }
-
-      renderAll();
-    }
-
-    function sellCharm(charmIndex) {
-      const charm = state.charms[charmIndex];
-      if (!charm) return;
-      const sellValue = Math.max(1, Math.floor(charm.cost / 2));
-      state.money += sellValue;
-      state.charms.splice(charmIndex, 1);
-      if (state.inspectedItem && state.inspectedItem.kind === 'charm' && state.inspectedItem.index === charmIndex) {
-        state.inspectedItem = null;
-      }
-      sfx.cash();
-      spawnFloatingText(window.innerWidth * 0.5, window.innerHeight * 0.25, `Sold ${charm.name} (+$${sellValue})`, '#fbbf24');
-      renderAll();
-    }
-
-    function proceedToNextBlind() {
-      let nextBlind = state.blindIndex + 1;
-      let nextAnte = state.ante;
-      if (nextBlind > 2) {
-        nextBlind = 0;
-        nextAnte++;
-      }
-      setupBlind(nextAnte, nextBlind);
-      renderAll();
-    }
-
-    // --- UI Rendering & Visual Helpers ---
-    function renderDiePips(value) {
-      const pipMap = {
-        1: [4],
-        2: [2, 6],
-        3: [2, 4, 6],
-        4: [0, 2, 6, 8],
-        5: [0, 2, 4, 6, 8],
-        6: [0, 2, 3, 5, 6, 8]
-      };
-      const activeCells = pipMap[value] || [];
-      let html = '<div class="grid grid-cols-3 grid-rows-3 gap-1.5 sm:gap-2 w-11 h-11 sm:w-14 sm:h-14 place-items-center">';
-      for (let i = 0; i < 9; i++) {
-        if (activeCells.includes(i)) {
-          html += `<span class="pip"></span>`;
-        } else {
-          html += `<span></span>`;
-        }
-      }
-      html += '</div>';
-      return html;
-    }
-
-    function renderDice() {
-      const container = document.getElementById('dice-container');
-      container.innerHTML = '';
-
-      state.dice.forEach((die) => {
-        const typeMeta = DICE_TYPES[die.type] || DICE_TYPES.standard;
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = [
-          'die-card relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl flex flex-col items-center justify-center cursor-pointer focus:outline-none',
-          typeMeta.css,
-          die.selected ? 'die-selected' : '',
-          die.locked ? 'die-locked' : '',
-          die.rolling ? 'die-rolling' : ''
-        ].join(' ');
-
-        btn.innerHTML = `
-          ${die.type !== 'standard' ? `<span class="absolute top-1.5 left-2 text-[9px] font-extrabold uppercase tracking-wider opacity-80">${typeMeta.badge}</span>` : ''}
-          ${die.locked ? `<span class="absolute top-1.5 right-2 text-[10px] font-bold bg-slate-900/80 text-white px-1.5 py-0.5 rounded">KEPT</span>` : ''}
-          ${renderDiePips(die.value)}
-          <span class="absolute bottom-1 right-2 text-[10px] font-mono-num font-bold opacity-60">${die.value}</span>
-        `;
-
-        btn.addEventListener('click', () => {
-          if (state.turnState !== 'ROLLING' || die.locked) return;
-          die.selected = !die.selected;
-          sfx.selectDie(die.selected ? 2 : 0);
-          renderDice();
-          updateSelectionAndActionControls();
-        });
-
-        container.appendChild(btn);
-      });
-
-      const cupPills = document.getElementById('cup-summary-pills');
-      cupPills.innerHTML = '';
-      state.cup.forEach((t, i) => {
-        const meta = DICE_TYPES[t];
-        const colorCls = t === 'gold' ? 'border-amber-500/60 text-amber-300 bg-amber-950/40'
-          : t === 'glass' ? 'border-sky-500/60 text-sky-300 bg-sky-950/40'
-          : t === 'weighted' ? 'border-purple-500/60 text-purple-300 bg-purple-950/40'
-          : t === 'wild' ? 'border-pink-500/60 text-pink-300 bg-pink-950/40'
-          : 'border-slate-700 text-slate-300 bg-slate-900/60';
-        const pill = document.createElement('button');
-        pill.type = 'button';
-        pill.className = `px-2 py-1 rounded-md border ${colorCls} active:scale-95 transition`;
-        pill.textContent = `#${i + 1} ${meta.badge}`;
-        pill.addEventListener('click', () => {
-          openInspectDrawer({
-            kind: 'die',
-            icon: '🎲',
-            badge: `CUP DIE #${i + 1} • ${meta.badge}`,
-            title: meta.name,
-            desc: meta.desc
-          });
-        });
-        cupPills.appendChild(pill);
-      });
-    }
-
-    function updateSelectionAndActionControls() {
-      const selected = state.dice.filter(d => d.selected && !d.locked);
-      const evalRes = evaluateSelection(selected);
-
-      const comboLabel = document.getElementById('detected-combo-label');
-      const previewBaseAdd = document.getElementById('preview-base-add');
-      const previewMultAdd = document.getElementById('preview-mult-add');
-      const turnBaseEl = document.getElementById('turn-base-display');
-      const turnMultEl = document.getElementById('turn-mult-display');
-      const projectedTotalEl = document.getElementById('projected-bank-total');
-
-      turnBaseEl.textContent = state.turnBase.toLocaleString();
-      turnMultEl.textContent = `${state.turnMult.toFixed(2).replace(/\.00$/, '.0')}x`;
-
-      let projectedBase = state.turnBase;
-      let projectedMult = state.turnMult;
-
-      if (selected.length === 0) {
-        comboLabel.textContent = state.turnBase > 0 ? 'Bank your pot or select more dice!' : 'Select scoring dice to begin!';
-        comboLabel.className = 'font-display font-bold text-base sm:text-xl text-slate-300 truncate';
-        previewBaseAdd.textContent = '+0 sel';
-        previewMultAdd.textContent = '';
-      } else if (evalRes.valid) {
-        comboLabel.textContent = evalRes.label;
-        comboLabel.className = 'font-display font-bold text-base sm:text-xl text-emerald-300 truncate';
-        previewBaseAdd.textContent = `+${evalRes.base} sel`;
-
-        let totalMultNotes = [];
-        if (evalRes.multAdd > 0) totalMultNotes.push(`+${evalRes.multAdd.toFixed(1)}x`);
-        if (evalRes.multMultiply > 1) totalMultNotes.push(`×${evalRes.multMultiply}`);
-        previewMultAdd.textContent = totalMultNotes.join(' ');
-
-        projectedBase += evalRes.base;
-        projectedMult = (projectedMult + evalRes.multAdd) * evalRes.multMultiply;
-      } else {
-        comboLabel.textContent = evalRes.label;
-        comboLabel.className = 'font-display font-bold text-base sm:text-xl text-rose-400 truncate';
-        previewBaseAdd.textContent = 'Invalid';
-        previewMultAdd.textContent = '';
-      }
-
-      const projectedBank = Math.round(projectedBase * projectedMult);
-      projectedTotalEl.textContent = `${projectedBank.toLocaleString()} pts`;
-
-      const btnPush = document.getElementById('btn-push');
-      const btnBank = document.getElementById('btn-bank');
-      const btnReroll = document.getElementById('btn-reroll');
-
-      const canAct = state.turnState === 'ROLLING';
-      btnPush.disabled = !canAct || !evalRes.valid;
-
-      const unlockedCount = state.dice.filter(d => !d.locked).length;
-      const willBeHotDice = evalRes.valid && selected.length === unlockedCount;
-      let pushStep = hasCharm('greedy_goblin') ? 0.75 : 0.5;
-      if (state.bossRule && state.bossRule.ruleId === 'lower_push_mult') pushStep = 0.25;
-
-      document.getElementById('btn-push-sub').textContent = willBeHotDice
-        ? `HOT DICE! +${(pushStep + 2).toFixed(1)}x`
-        : `+${pushStep}x • Roll ${Math.max(0, unlockedCount - selected.length)}`;
-
-      const canBank = canAct && (evalRes.valid || (selected.length === 0 && state.turnBase > 0));
-      btnBank.disabled = !canBank;
-      document.getElementById('btn-bank-sub').textContent = canBank
-        ? `${projectedBank.toLocaleString()} pts`
-        : 'Select dice';
-
-      btnReroll.disabled = !canAct || state.rerollsLeft <= 0 || unlockedCount === 0;
-      document.getElementById('btn-reroll-sub').textContent = `${state.rerollsLeft} left (Safe)`;
-    }
-
-    function renderCharmsRack() {
-      const rack = document.getElementById('charms-rack');
-      document.getElementById('charm-count-badge').textContent = `${state.charms.length} / ${state.maxCharms}`;
-      rack.innerHTML = '';
-
-      for (let i = 0; i < state.maxCharms; i++) {
-        const charm = state.charms[i];
-        if (charm) {
-          const sellPrice = Math.max(1, Math.floor(charm.cost / 2));
-          const isInspected = state.inspectedItem && state.inspectedItem.kind === 'charm' && state.inspectedItem.index === i;
-          const card = document.createElement('button');
-          card.type = 'button';
-          card.setAttribute('data-charm-id', charm.id);
-          card.className = `charm-card text-left relative rounded-xl bg-gradient-to-b from-[#1e3b34] to-[#122420] border-2 ${isInspected ? 'border-amber-300 ring-2 ring-amber-400/40' : 'border-amber-500/50'} p-2 sm:p-2.5 flex flex-col justify-between shadow-md active:scale-95 transition`;
-          card.innerHTML = `
-            <div>
-              <div class="flex items-center justify-between gap-1">
-                <span class="text-lg sm:text-xl">${charm.icon}</span>
-                <span class="text-[8px] sm:text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300">${charm.rarity}</span>
-              </div>
-              <div class="font-display font-bold text-xs sm:text-sm text-white mt-1 leading-tight line-clamp-1">${charm.name}</div>
-              <p class="hidden sm:block text-[10px] text-slate-300 mt-1 leading-snug line-clamp-2">${charm.desc}</p>
-            </div>
-            <div class="mt-1.5 text-[10px] font-bold text-amber-300/90 flex items-center justify-between">
-              <span>Sell $${sellPrice}</span>
-              <span class="sm:hidden text-slate-400">Tap ⓘ</span>
-            </div>
-          `;
-          card.addEventListener('click', () => {
-            openInspectDrawer({
-              kind: 'charm',
-              index: i,
-              icon: charm.icon,
-              badge: `CHARM • ${charm.rarity}`,
-              title: charm.name,
-              desc: charm.desc,
-              sellValue: sellPrice
-            });
-          });
-          rack.appendChild(card);
-        } else {
-          const empty = document.createElement('div');
-          empty.className = 'rounded-xl border border-dashed border-emerald-800/60 bg-[#0b1614]/50 p-2 flex flex-col items-center justify-center text-center text-[10px] sm:text-[11px] text-slate-500 min-h-[82px] sm:min-h-[104px]';
-          empty.innerHTML = `<span class="opacity-40 text-base sm:text-lg mb-0.5">✦</span><span>Empty</span>`;
-          rack.appendChild(empty);
-        }
-      }
-    }
-
-    function renderShop() {
-      document.getElementById('shop-payout-summary').textContent = state.lastPayoutText;
-      document.getElementById('shop-reroll-cost').textContent = state.shopRerollCost;
-      const btnShopReroll = document.getElementById('btn-shop-reroll');
-      btnShopReroll.disabled = state.money < state.shopRerollCost;
-
-      const grid = document.getElementById('shop-items-grid');
-      grid.innerHTML = '';
-
-      state.shopItems.forEach((item, idx) => {
-        const canAfford = !item.sold && state.money >= item.data.cost;
-        const badgeText = item.kind === 'charm' ? `CHARM • ${item.data.rarity}`
-          : item.kind === 'manual' ? 'MANUAL • LEVEL UP'
-          : 'CUSTOM DIE';
-        const badgeColor = item.kind === 'charm' ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-          : item.kind === 'manual' ? 'bg-sky-500/20 text-sky-300 border-sky-500/40'
-          : 'bg-purple-500/20 text-purple-300 border-purple-500/40';
-
-        const iconDisplay = item.kind === 'die' ? '🎲' : item.data.icon;
-
-        const card = document.createElement('div');
-        card.className = `rounded-2xl bg-[#0b1614] border-2 ${item.sold ? 'border-slate-800 opacity-55' : 'border-emerald-800/80 hover:border-amber-400/70'} p-4 flex flex-col justify-between transition`;
-        card.innerHTML = `
-          <div>
-            <div class="flex items-center justify-between gap-2 mb-2">
-              <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${badgeColor}">${badgeText}</span>
-              <span class="font-mono-num font-extrabold text-base text-amber-400">$${item.data.cost}</span>
-            </div>
-            <div class="flex items-center gap-2.5 my-2">
-              <span class="text-3xl">${iconDisplay}</span>
-              <h3 class="font-display font-bold text-lg text-white leading-tight">${item.data.name}</h3>
-            </div>
-            <p class="text-xs text-slate-300 leading-relaxed">${item.data.desc}</p>
-          </div>
-          <button type="button" ${(!canAfford || item.sold) ? 'disabled' : ''} class="mt-4 min-h-[44px] w-full py-2.5 rounded-xl font-extrabold text-xs uppercase tracking-wider transition ${
-            item.sold
-              ? 'bg-slate-800 text-slate-500 cursor-default'
-              : canAfford
-                ? 'bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 shadow-md'
-                : 'bg-slate-800 text-slate-500 cursor-not-allowed'
-          }">
-            ${item.sold ? 'Purchased' : canAfford ? `Buy for $${item.data.cost}` : `Need $${item.data.cost}`}
-          </button>
-        `;
-        card.querySelector('button').addEventListener('click', () => buyShopItem(idx));
-        grid.appendChild(card);
-      });
-
-      const shopCup = document.getElementById('shop-cup-display');
-      shopCup.innerHTML = '';
-      state.cup.forEach((t, idx) => {
-        const meta = DICE_TYPES[t];
-        const slotBtn = document.createElement('button');
-        slotBtn.type = 'button';
-        slotBtn.className = 'rounded-xl p-2.5 text-center border border-slate-700 bg-[#132521] hover:border-sky-400 active:scale-95 transition';
-        slotBtn.innerHTML = `
-          <div class="text-[10px] text-slate-400">Slot #${idx + 1}</div>
-          <div class="font-display font-bold text-xs text-white mt-0.5">${meta.name}</div>
-        `;
-        slotBtn.addEventListener('click', () => {
-          openInspectDrawer({
-            kind: 'die',
-            icon: '🎲',
-            badge: `CUP SLOT #${idx + 1} • ${meta.badge}`,
-            title: meta.name,
-            desc: meta.desc
-          });
-        });
-        shopCup.appendChild(slotBtn);
-      });
-    }
-
-    function renderAll() {
-      const blindNames = ['Small', 'Big', 'Boss'];
-      const blindFullNames = ['Small Blind', 'Big Blind', 'Boss Blind'];
-      const blindTitles = ['The Warm-Up', 'Double Down', state.bossRule ? state.bossRule.name : 'The House Boss'];
-      const baseRewards = [4, 5, 7];
-
-      document.getElementById('ante-badge').textContent = `ANTE ${state.ante} • ${blindNames[state.blindIndex].toUpperCase()}`;
-      document.getElementById('blind-subtitle').textContent = `${blindFullNames[state.blindIndex]} (Ante ${state.ante})`;
-      document.getElementById('blind-title').textContent = blindTitles[state.blindIndex];
-      document.getElementById('blind-reward').textContent = baseRewards[state.blindIndex];
-
-      const bossBox = document.getElementById('boss-modifier-box');
-      if (state.bossRule) {
-        bossBox.classList.remove('hidden');
-        document.getElementById('boss-modifier-text').textContent = `${state.bossRule.name}: ${state.bossRule.desc}`;
-      } else {
-        bossBox.classList.add('hidden');
-      }
-
-      document.getElementById('target-score').textContent = state.targetScore.toLocaleString();
-      document.getElementById('round-score').textContent = state.roundScore.toLocaleString();
-      const pct = Math.min(100, Math.round((state.roundScore / state.targetScore) * 100));
-      document.getElementById('score-percent').textContent = `${pct}%`;
-      document.getElementById('score-progress-bar').style.width = `${pct}%`;
-
-      document.getElementById('push-streak-badge').textContent = `Push Streak: ${state.pushCount}`;
-      document.getElementById('turns-left').textContent = state.turnsLeft;
-      document.getElementById('rerolls-left').textContent = state.rerollsLeft;
-      document.getElementById('player-money').textContent = state.money;
-
-      const comboList = document.getElementById('combo-levels-list');
-      comboList.innerHTML = `
-        <div class="p-2 rounded-lg bg-[#0b1614] border border-slate-800 flex justify-between items-center">
-          <span class="text-slate-300">1s & 5s</span>
-          <span class="font-mono-num font-bold text-sky-300">Lv.${state.comboLevels.singles}</span>
-        </div>
-        <div class="p-2 rounded-lg bg-[#0b1614] border border-slate-800 flex justify-between items-center">
-          <span class="text-slate-300">3–6 of a Kind</span>
-          <span class="font-mono-num font-bold text-sky-300">Lv.${state.comboLevels.sets}</span>
-        </div>
-        <div class="col-span-2 p-2 rounded-lg bg-[#0b1614] border border-slate-800 flex justify-between items-center">
-          <span class="text-slate-300">Straights / 3 Pairs / Full House</span>
-          <span class="font-mono-num font-bold text-emerald-300">Lv.${state.comboLevels.specials}</span>
-        </div>
-      `;
-
-      renderCharmsRack();
-      renderInspectDrawer();
-
-      const playArena = document.getElementById('play-arena');
-      const shopArena = document.getElementById('shop-arena');
-      const gameoverArena = document.getElementById('gameover-arena');
-      const stickyActions = document.getElementById('action-controls-bar');
-
-      playArena.classList.add('hidden');
-      shopArena.classList.add('hidden');
-      gameoverArena.classList.add('hidden');
-
-      if (state.turnState === 'SHOP') {
-        shopArena.classList.remove('hidden');
-        shopArena.classList.add('flex');
-        if (stickyActions) stickyActions.classList.add('hidden');
-        renderShop();
-      } else if (state.turnState === 'GAMEOVER') {
-        gameoverArena.classList.remove('hidden');
-        gameoverArena.classList.add('flex');
-        if (stickyActions) stickyActions.classList.add('hidden');
-        document.getElementById('stat-ante').textContent = `Ante ${state.ante}`;
-        document.getElementById('stat-best-turn').textContent = state.stats.bestTurn.toLocaleString();
-        document.getElementById('stat-farkles').textContent = state.stats.totalFarkles;
-      } else {
-        playArena.classList.remove('hidden');
-        if (stickyActions) stickyActions.classList.remove('hidden');
-        renderDice();
-        updateSelectionAndActionControls();
-      }
-    }
-
-    // --- Event Banners & Floating Popups ---
-    function showEventBanner(title, desc, colorClasses) {
-      const banner = document.getElementById('event-banner');
-      banner.className = `mb-3 p-3.5 rounded-2xl text-center border-2 transition-all ${colorClasses}`;
-      document.getElementById('event-banner-title').textContent = title;
-      document.getElementById('event-banner-desc').textContent = desc;
-      banner.classList.remove('hidden');
-    }
-
-    function hideEventBanner() {
-      document.getElementById('event-banner').classList.add('hidden');
-    }
-
-    function spawnFloatingText(x, y, text, color = '#fbbf24') {
-      const layer = document.getElementById('floating-layer');
-      const el = document.createElement('div');
-      el.className = 'fixed font-display font-extrabold text-xl sm:text-2xl drop-shadow-[0_3px_4px_rgba(0,0,0,0.9)] animate-float-score';
-      el.style.left = `${Math.max(40, Math.min(window.innerWidth - 160, x - 60))}px`;
-      el.style.top = `${Math.max(60, y)}px`;
-      el.style.color = color;
-      el.textContent = text;
-      layer.appendChild(el);
-      setTimeout(() => el.remove(), 1200);
-    }
-
-    // --- Event Listeners Wiring ---
-    function bindEvents() {
-      document.getElementById('btn-push').addEventListener('click', handlePushRoll);
-      document.getElementById('btn-bank').addEventListener('click', handleBankPoints);
-      document.getElementById('btn-reroll').addEventListener('click', handleSafeReroll);
-
-      document.getElementById('btn-select-all-scoring').addEventListener('click', () => {
-        if (state.turnState !== 'ROLLING') return;
-        state.dice.forEach(d => { if (!d.locked) d.selected = false; });
-        const best = findBestAutoSelection(state.dice);
-        best.forEach(d => { d.selected = true; });
-        sfx.selectDie(3);
-        renderDice();
-        updateSelectionAndActionControls();
-      });
-
-      document.getElementById('btn-clear-selection').addEventListener('click', () => {
-        if (state.turnState !== 'ROLLING') return;
-        state.dice.forEach(d => { if (!d.locked) d.selected = false; });
-        sfx.selectDie(0);
-        renderDice();
-        updateSelectionAndActionControls();
-      });
-
-      document.getElementById('btn-shop-reroll').addEventListener('click', () => {
-        if (state.money < state.shopRerollCost) return;
-        state.money -= state.shopRerollCost;
-        state.shopRerollCost++;
-        sfx.rollDice();
-        generateShopInventory();
-        renderAll();
-      });
-
-      document.getElementById('btn-next-blind').addEventListener('click', proceedToNextBlind);
-      document.getElementById('btn-new-run').addEventListener('click', startFreshRun);
-      document.getElementById('btn-restart-gameover').addEventListener('click', startFreshRun);
-
-      // Tap-to-Inspect Controls
-      document.getElementById('btn-inspect-close').addEventListener('click', closeInspectDrawer);
-      document.getElementById('btn-inspect-sell').addEventListener('click', () => {
-        if (state.inspectedItem && state.inspectedItem.kind === 'charm') {
-          sellCharm(state.inspectedItem.index);
-        }
-      });
-      document.getElementById('boss-modifier-box').addEventListener('click', () => {
-        if (!state.bossRule) return;
-        openInspectDrawer({
-          kind: 'boss',
-          icon: '👹',
-          badge: 'BOSS BLIND MODIFIER',
-          title: state.bossRule.name,
-          desc: state.bossRule.desc
-        });
-      });
-
-      const btnSound = document.getElementById('btn-sound');
-      btnSound.addEventListener('click', () => {
-        sfx.enabled = !sfx.enabled;
-        btnSound.textContent = sfx.enabled ? '🔊' : '🔇';
-        if (sfx.enabled) sfx.selectDie(2);
-      });
-
-      const guideModal = document.getElementById('guide-modal');
-      document.getElementById('btn-guide').addEventListener('click', () => guideModal.classList.remove('hidden'));
-      document.getElementById('btn-close-guide').addEventListener('click', () => guideModal.classList.add('hidden'));
-      guideModal.addEventListener('click', (e) => {
-        if (e.target === guideModal) guideModal.classList.add('hidden');
-      });
-    }
-
-    function startFreshRun() {
-      state = createInitialState();
-      setupBlind(1, 0);
-      renderAll();
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
-      bindEvents();
-      startFreshRun();
+  if (remainingUnlocked.length === 0) {
+    const bonus = hasCharm('molten_core') ? 4.0 : 2.0;
+    state.potMult = +(state.potMult + bonus).toFixed(2);
+    SoundFX.hotDice();
+    showToast(`🔥 HOT DICE! +${bonus.toFixed(1)}x Mult & Fresh 6 Dice!`, 'text-amber-300');
+    state.currentDice.forEach(d => {
+      d.locked = false;
+      d.selected = false;
+      d.value = rollSingleDieValue(d.material);
     });
-  </script>
+  } else {
+    SoundFX.roll();
+    remainingUnlocked.forEach(d => {
+      d.value = rollSingleDieValue(d.material);
+    });
+  }
+
+  renderAll(true);
+  checkForFarkle();
+}
+
+function handleBankPot() {
+  if (state.bossEffect === 'HEAVY_HAND' && state.pushStreak < 1) {
+    showToast('Boss Rule: Must Push Luck at least once!', 'text-rose-300');
+    return;
+  }
+
+  const selected = state.currentDice.filter(d => d.selected && !d.locked);
+  let finalChips = state.potChips;
+  let finalMult = state.potMult;
+  let extraCash = 0;
+
+  if (selected.length > 0) {
+    const evalRes = evaluateSelection(selected);
+    if (!evalRes.valid) return;
+    finalChips += evalRes.pts;
+    finalMult = +(finalMult + evalRes.multAdd).toFixed(2);
+    extraCash += evalRes.cashEarned;
+    selected.forEach(d => {
+      d.locked = true;
+      d.selected = false;
+    });
+  }
+
+  if (finalChips <= 0) return;
+
+  const unusedCount = state.currentDice.filter(d => !d.locked).length;
+  if (hasCharm('minimalist') && unusedCount > 0) {
+    finalChips += unusedCount * 75;
+  }
+
+  let shatteredCount = 0;
+  state.currentDice.forEach((d, idx) => {
+    if (d.locked && d.material === 'GLASS' && Math.random() < 0.25) {
+      state.dicePool[idx] = 'STANDARD';
+      d.material = 'STANDARD';
+      shatteredCount++;
+    }
+  });
+
+  const bankedTotal = Math.round(finalChips * finalMult);
+  state.roundScore += bankedTotal;
+  state.money += extraCash;
+  if (bankedTotal > state.bestBank) state.bestBank = bankedTotal;
+
+  SoundFX.bank();
+  showToast(`BANKED +${bankedTotal.toLocaleString()} PTS!`, 'text-emerald-300');
+  if (shatteredCount > 0) {
+    setTimeout(() => showToast(`💥 ${shatteredCount} Prism Glass Die shattered!`, 'text-cyan-300'), 420);
+  }
+
+  state.turnsLeft--;
+  renderAll(false);
+
+  if (state.roundScore >= state.targetScore) {
+    setTimeout(() => onBlindWon(), 650);
+  } else if (state.turnsLeft <= 0) {
+    setTimeout(() => onGameOver(), 650);
+  } else {
+    setTimeout(() => startNewTurn(), 650);
+  }
+}
+
+function handleRerollUnlocked() {
+  if (state.rerollsLeft <= 0) return;
+  const unlocked = state.currentDice.filter(d => !d.locked);
+  if (unlocked.length === 0) return;
+
+  state.rerollsLeft--;
+  SoundFX.roll();
+  unlocked.forEach(d => {
+    d.selected = false;
+    d.value = rollSingleDieValue(d.material);
+  });
+
+  renderAll(true);
+  checkForFarkle();
+}
+
+/* ============================================================================
+   6. SHOP, REWARDS & PROGRESSION
+   ============================================================================ */
+function onBlindWon() {
+  state.phase = 'SHOP';
+  const baseReward = [4, 5, 7][state.blindIndex];
+  const turnBonus = state.turnsLeft * 1;
+  const interest = Math.min(5, Math.floor(state.money / 5));
+  const totalEarned = baseReward + turnBonus + interest;
+  state.money += totalEarned;
+
+  document.getElementById('shop-payout-breakdown').textContent =
+    `Blind Clear $${baseReward} + Unused Turns $${turnBonus} + Interest $${interest} = +$${totalEarned}`;
+
+  generateShopOffers();
+  openModal('shop-modal');
+  renderShop();
+}
+
+function onGameOver() {
+  state.phase = 'GAMEOVER';
+  const blindNames = ['Small Blind', 'Big Blind', 'Boss Blind'];
+  document.getElementById('end-ante').textContent = `Ante ${state.ante} • ${blindNames[state.blindIndex]}`;
+  document.getElementById('end-best-bank').textContent = `${state.bestBank.toLocaleString()} pts`;
+  document.getElementById('end-farkles').textContent = state.totalFarkles;
+  openModal('end-modal');
+}
+
+function generateShopOffers() {
+  const offers = [];
+  const ownedIds = new Set(state.charms.map(c => c.id));
+  const availableCharms = CHARM_POOL.filter(c => !ownedIds.has(c.id));
+
+  const shuffledCharms = [...availableCharms].sort(() => Math.random() - 0.5);
+  for (let i = 0; i < Math.min(2, shuffledCharms.length); i++) {
+    offers.push({
+      kind: 'CHARM',
+      item: { ...shuffledCharms[i] },
+      sold: false
+    });
+  }
+
+  const comboKeys = Object.keys(COMBO_DEFS);
+  while (offers.length < 3) {
+    const randomKey = comboKeys[Math.floor(Math.random() * comboKeys.length)];
+    const def = COMBO_DEFS[randomKey];
+    offers.push({
+      kind: 'MANUAL',
+      comboId: randomKey,
+      name: `${def.name} Manual`,
+      cost: 3,
+      desc: `Level up ${def.name}: +${def.stepPts} Base Pts & +${def.stepMult}x Mult permanently.`,
+      sold: false
+    });
+  }
+
+  state.shopOffers = offers;
+}
+
+function buyShopOffer(index) {
+  const offer = state.shopOffers[index];
+  if (!offer || offer.sold) return;
+
+  if (offer.kind === 'CHARM') {
+    if (state.charms.length >= 5) {
+      alert('Your Charm rack is full (5/5)! Tap a Charm to inspect and sell it first.');
+      return;
+    }
+    if (state.money < offer.item.cost) return;
+    state.money -= offer.item.cost;
+    state.charms.push({ ...offer.item });
+    offer.sold = true;
+    SoundFX.buy();
+  } else if (offer.kind === 'MANUAL') {
+    if (state.money < offer.cost) return;
+    state.money -= offer.cost;
+    state.comboLevels[offer.comboId]++;
+    offer.sold = true;
+    SoundFX.buy();
+  }
+
+  renderAll(false);
+  renderShop();
+}
+
+function buyDieUpgrade(materialId) {
+  if (state.money < 4) return;
+  const slotIdx = parseInt(document.getElementById('shop-die-target').value, 10);
+  state.money -= 4;
+  state.dicePool[slotIdx] = materialId;
+  SoundFX.buy();
+  renderAll(false);
+  renderShop();
+}
+
+function advanceToNextBlind() {
+  closeModals();
+  if (state.blindIndex < 2) {
+    state.blindIndex++;
+  } else {
+    state.blindIndex = 0;
+    state.ante++;
+  }
+  startBlind();
+}
+
+/* ============================================================================
+   7. UI RENDERING & TAP-TO-INSPECT DRAWER
+   ============================================================================ */
+function openInspector({ tag, title, desc, sellIndex = null }) {
+  state.inspectedItem = { tag, title, desc, sellIndex };
+  const drawer = document.getElementById('inspect-drawer');
+  document.getElementById('inspect-tag').textContent = tag;
+  document.getElementById('inspect-title').textContent = title;
+  document.getElementById('inspect-desc').textContent = desc;
+
+  const sellBtn = document.getElementById('btn-inspect-sell');
+  if (sellIndex !== null && state.charms[sellIndex]) {
+    const sellVal = Math.max(1, Math.floor(state.charms[sellIndex].cost / 2));
+    sellBtn.textContent = `Sell +$${sellVal}`;
+    sellBtn.classList.remove('hidden');
+    sellBtn.onclick = () => {
+      SoundFX.click();
+      state.money += sellVal;
+      state.charms.splice(sellIndex, 1);
+      closeInspector();
+      renderAll(false);
+      if (state.phase === 'SHOP') renderShop();
+    };
+  } else {
+    sellBtn.classList.add('hidden');
+    sellBtn.onclick = null;
+  }
+
+  drawer.classList.remove('hidden');
+}
+
+function closeInspector() {
+  state.inspectedItem = null;
+  document.getElementById('inspect-drawer').classList.add('hidden');
+}
+
+function renderPipGrid(value) {
+  const patterns = {
+    1: [4],
+    2: [2, 6],
+    3: [2, 4, 6],
+    4: [0, 2, 6, 8],
+    5: [0, 2, 4, 6, 8],
+    6: [0, 2, 3, 5, 6, 8]
+  };
+  const active = new Set(patterns[value] || []);
+  let html = '<div class="grid grid-cols-3 grid-rows-3 gap-1 w-9 h-9 sm:w-12 sm:h-12 place-items-center">';
+  for (let i = 0; i < 9; i++) {
+    html += active.has(i) ? '<span class="pip"></span>' : '<span></span>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function renderAll(animateRoll = false) {
+  const blindLabels = ['Small Blind', 'Big Blind', 'Boss Blind'];
+  const blindNames = ['The Warm-Up', 'The Escalation', state.bossEffect ? BOSS_BLINDS[(state.ante - 1) % BOSS_BLINDS.length].name : 'Boss Blind'];
+  const blindDescs = [
+    'Standard Farkle rules. Score enough points before running out of turns.',
+    'Higher stakes and bigger target. Build your turn multiplier!',
+    state.bossEffect ? BOSS_BLINDS[(state.ante - 1) % BOSS_BLINDS.length].desc : ''
+  ];
+
+  document.getElementById('ante-badge').textContent = `Ante ${state.ante} • ${blindLabels[state.blindIndex].split(' ')[0]}`;
+  document.getElementById('blind-type-label').textContent = blindLabels[state.blindIndex];
+  document.getElementById('blind-name').textContent = blindNames[state.blindIndex];
+  document.getElementById('blind-desc').textContent = blindDescs[state.blindIndex];
+  document.getElementById('blind-reward-label').textContent = `Reward: $${[4, 5, 7][state.blindIndex]}+`;
+
+  const blindPanel = document.getElementById('blind-panel');
+  if (state.blindIndex === 2) {
+    blindPanel.classList.add('border-rose-500/80', 'bg-rose-950/30');
+    blindPanel.classList.remove('border-emerald-800/70', 'bg-[#122420]');
+  } else {
+    blindPanel.classList.remove('border-rose-500/80', 'bg-rose-950/30');
+    blindPanel.classList.add('border-emerald-800/70', 'bg-[#122420]');
+  }
+
+  document.getElementById('target-score').textContent = state.targetScore.toLocaleString();
+  document.getElementById('round-score').textContent = state.roundScore.toLocaleString();
+  const pct = Math.min(100, Math.round((state.roundScore / state.targetScore) * 100));
+  document.getElementById('score-pct').textContent = `${pct}%`;
+  document.getElementById('score-bar').style.width = `${pct}%`;
+
+  document.getElementById('stat-turns').textContent = state.turnsLeft;
+  document.getElementById('stat-rerolls').textContent = state.rerollsLeft;
+  document.getElementById('stat-money').textContent = `$${state.money}`;
+
+  const selected = state.currentDice.filter(d => d.selected && !d.locked);
+  const evalRes = evaluateSelection(selected);
+
+  let previewChips = state.potChips;
+  let previewMult = state.potMult;
+
+  const readoutEl = document.getElementById('selection-readout');
+  if (selected.length === 0) {
+    readoutEl.textContent = state.potChips > 0
+      ? 'Select more dice to push, or Bank Turn Pot!'
+      : 'Select scoring dice to begin!';
+    readoutEl.className = 'font-display text-sm sm:text-lg font-bold text-slate-300 mt-0.5 truncate';
+  } else if (evalRes.valid) {
+    previewChips += evalRes.pts;
+    previewMult = +(previewMult + evalRes.multAdd).toFixed(2);
+    readoutEl.textContent = `${evalRes.label} (+${evalRes.pts} Base${evalRes.multAdd > 0 ? `, +${evalRes.multAdd}x Mult` : ''})`;
+    readoutEl.className = 'font-display text-sm sm:text-lg font-bold text-amber-300 mt-0.5 truncate';
+  } else {
+    readoutEl.textContent = evalRes.reason;
+    readoutEl.className = 'font-display text-xs sm:text-base font-bold text-rose-400 mt-0.5 truncate';
+  }
+
+  document.getElementById('pot-chips').textContent = previewChips.toLocaleString();
+  document.getElementById('pot-mult').textContent = `${previewMult.toFixed(1)}x`;
+  const projectedTotal = Math.round(previewChips * previewMult);
+  document.getElementById('pot-total').textContent = `${projectedTotal.toLocaleString()} pts`;
+  document.getElementById('push-streak-badge').textContent = `Push Streak: ${state.pushStreak}`;
+
+  document.getElementById('charm-count').textContent = `${state.charms.length} / 5`;
+  const rack = document.getElementById('charms-rack');
+  rack.innerHTML = '';
+  for (let i = 0; i < 5; i++) {
+    const charm = state.charms[i];
+    if (charm) {
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'charm-card text-left rounded-xl bg-emerald-950/90 border border-amber-500/40 p-2 flex flex-col justify-between relative';
+      card.innerHTML = `
+        <div class="flex items-center justify-between gap-1">
+          <span class="text-base leading-none">${charm.icon}</span>
+          <span class="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-black/40 text-amber-300">${charm.rarity}</span>
+        </div>
+        <div class="font-display font-bold text-xs text-white leading-tight mt-1.5 truncate">${charm.name}</div>
+      `;
+      card.onclick = () => {
+        SoundFX.click();
+        openInspector({
+          tag: `${charm.rarity} Charm`,
+          title: `${charm.icon} ${charm.name}`,
+          desc: charm.desc,
+          sellIndex: i
+        });
+      };
+      rack.appendChild(card);
+    } else {
+      const empty = document.createElement('div');
+      empty.className = 'rounded-xl border border-dashed border-emerald-800/60 bg-black/20 flex items-center justify-center text-[11px] text-emerald-700 font-semibold min-h-[64px]';
+      empty.textContent = 'Empty Slot';
+      rack.appendChild(empty);
+    }
+  }
+
+  const diceContainer = document.getElementById('dice-container');
+  diceContainer.innerHTML = '';
+  state.currentDice.forEach(die => {
+    const mat = DIE_MATERIALS[die.material];
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.disabled = die.locked || state.phase !== 'PLAYING';
+    btn.className = `die-card w-20 h-20 sm:w-24 sm:h-24 rounded-2xl border-2 flex flex-col items-center justify-center relative ${mat.bgClass} ${
+      die.selected ? 'die-selected' : ''
+    } ${die.locked ? 'die-locked' : 'cursor-pointer'} ${animateRoll && !die.locked ? 'animate-roll' : ''}`;
+
+    btn.innerHTML = `
+      ${die.material !== 'STANDARD' ? `<span class="absolute top-1 right-1.5 text-[9px] font-extrabold uppercase tracking-wider opacity-85">${mat.badge}</span>` : ''}
+      ${die.locked ? `<span class="absolute bottom-1 text-[9px] font-bold uppercase tracking-wider text-slate-700">Locked</span>` : ''}
+      ${renderPipGrid(die.value)}
+    `;
+
+    btn.onclick = () => {
+      if (die.locked || state.phase !== 'PLAYING') return;
+      SoundFX.click();
+      die.selected = !die.selected;
+      renderAll(false);
+    };
+
+    diceContainer.appendChild(btn);
+  });
+
+  const cupSummary = document.getElementById('cup-summary');
+  cupSummary.innerHTML = '<span class="font-semibold text-slate-300 text-[11px]">Cup:</span>';
+  state.dicePool.forEach((matKey, idx) => {
+    const mat = DIE_MATERIALS[matKey];
+    const pill = document.createElement('button');
+    pill.type = 'button';
+    pill.className = `inspectable px-2 py-0.5 rounded border text-[10px] font-semibold transition active:scale-95 ${mat.pillClass}`;
+    pill.textContent = `#${idx + 1} ${mat.badge}`;
+    pill.onclick = () => {
+      SoundFX.click();
+      openInspector({
+        tag: `Die Slot #${idx + 1}`,
+        title: mat.name,
+        desc: mat.desc,
+        sellIndex: null
+      });
+    };
+    cupSummary.appendChild(pill);
+  });
+
+  const canPush = state.phase === 'PLAYING' && selected.length > 0 && evalRes.valid;
+  const heavyHandBlocked = state.bossEffect === 'HEAVY_HAND' && state.pushStreak < 1;
+  const canBank = state.phase === 'PLAYING' && !heavyHandBlocked && (
+    (selected.length === 0 && state.potChips > 0) ||
+    (selected.length > 0 && evalRes.valid && projectedTotal > 0)
+  );
+  const canReroll = state.phase === 'PLAYING' && state.rerollsLeft > 0 && state.currentDice.some(d => !d.locked);
+
+  ['desktop', 'mobile'].forEach(mode => {
+    document.getElementById(`btn-keep-roll-${mode}`).disabled = !canPush;
+    document.getElementById(`btn-bank-${mode}`).disabled = !canBank;
+    document.getElementById(`btn-reroll-${mode}`).disabled = !canReroll;
+  });
+
+  document.getElementById('bank-btn-sub-desktop').textContent = heavyHandBlocked
+    ? 'Blocked: Push Luck 1x first'
+    : `Lock in ${projectedTotal.toLocaleString()} pts`;
+  document.getElementById('bank-btn-sub-mobile').textContent = heavyHandBlocked
+    ? 'Push 1x first'
+    : `${projectedTotal.toLocaleString()} pts`;
+
+  document.getElementById('reroll-btn-sub-desktop').textContent = `Safe Re-throw (${state.rerollsLeft} left)`;
+  document.getElementById('reroll-btn-sub-mobile').textContent = `(${state.rerollsLeft} left)`;
+}
+
+function renderShop() {
+  document.getElementById('shop-money').textContent = `$${state.money}`;
+  const rerollShopBtn = document.getElementById('btn-shop-reroll');
+  rerollShopBtn.disabled = state.money < 2;
+
+  const grid = document.getElementById('shop-items-grid');
+  grid.innerHTML = '';
+  state.shopOffers.forEach((offer, idx) => {
+    const card = document.createElement('div');
+    card.className = `rounded-2xl border p-3.5 flex flex-col justify-between ${
+      offer.sold
+        ? 'bg-slate-900/40 border-slate-800 opacity-50'
+        : 'bg-[#172e29] border-emerald-700/70 shadow-lg'
+    }`;
+
+    if (offer.kind === 'CHARM') {
+      const c = offer.item;
+      const canAfford = !offer.sold && state.money >= c.cost && state.charms.length < 5;
+      card.innerHTML = `
+        <div>
+          <div class="flex items-center justify-between">
+            <span class="text-2xl">${c.icon}</span>
+            <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">${c.rarity} Charm</span>
+          </div>
+          <h3 class="font-display font-bold text-lg text-white mt-2">${c.name}</h3>
+          <p class="text-xs text-slate-300 mt-1 leading-relaxed">${c.desc}</p>
+        </div>
+        <button data-buy="${idx}" ${canAfford ? '' : 'disabled'} class="mt-3.5 w-full py-2.5 rounded-xl font-display font-bold text-sm transition active:scale-95 ${
+          offer.sold
+            ? 'bg-slate-800 text-slate-500'
+            : canAfford
+              ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow'
+              : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+        }">
+          ${offer.sold ? 'SOLD' : state.charms.length >= 5 ? 'RACK FULL (5/5)' : `Buy • $${c.cost}`}
+        </button>
+      `;
+    } else {
+      const canAfford = !offer.sold && state.money >= offer.cost;
+      card.innerHTML = `
+        <div>
+          <div class="flex items-center justify-between">
+            <span class="text-2xl">📜</span>
+            <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/40">Combo Manual</span>
+          </div>
+          <h3 class="font-display font-bold text-lg text-white mt-2">${offer.name}</h3>
+          <p class="text-xs text-slate-300 mt-1 leading-relaxed">${offer.desc}</p>
+        </div>
+        <button data-buy="${idx}" ${canAfford ? '' : 'disabled'} class="mt-3.5 w-full py-2.5 rounded-xl font-display font-bold text-sm transition active:scale-95 ${
+          offer.sold
+            ? 'bg-slate-800 text-slate-500'
+            : canAfford
+              ? 'bg-sky-500 hover:bg-sky-400 text-slate-950 shadow'
+              : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+        }">
+          ${offer.sold ? 'SOLD' : `Upgrade • $${offer.cost}`}
+        </button>
+      `;
+    }
+
+    grid.appendChild(card);
+  });
+
+  grid.querySelectorAll('button[data-buy]').forEach(btn => {
+    btn.onclick = () => buyShopOffer(parseInt(btn.getAttribute('data-buy'), 10));
+  });
+
+  const select = document.getElementById('shop-die-target');
+  const prevVal = select.value;
+  select.innerHTML = '';
+  state.dicePool.forEach((matKey, idx) => {
+    const opt = document.createElement('option');
+    opt.value = idx;
+    opt.textContent = `Slot ${idx + 1}: ${DIE_MATERIALS[matKey].name}`;
+    select.appendChild(opt);
+  });
+  select.value = prevVal || '0';
+
+  const upgradeGrid = document.getElementById('shop-dice-upgrades');
+  upgradeGrid.innerHTML = '';
+  ['GOLD', 'GLASS', 'WEIGHTED', 'WILD'].forEach(matKey => {
+    const mat = DIE_MATERIALS[matKey];
+    const canAfford = state.money >= 4;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.disabled = !canAfford;
+    btn.className = `rounded-xl border p-2.5 text-left transition active:scale-95 ${
+      canAfford
+        ? 'bg-[#172e29] hover:bg-[#1e3b34] border-sky-600/50 cursor-pointer'
+        : 'bg-slate-900/40 border-slate-800 opacity-50 cursor-not-allowed'
+    }`;
+    btn.innerHTML = `
+      <div class="font-display font-bold text-xs text-white">${mat.name}</div>
+      <div class="text-[11px] text-slate-300 mt-1 leading-snug">${mat.desc}</div>
+    `;
+    btn.onclick = () => buyDieUpgrade(matKey);
+    upgradeGrid.appendChild(btn);
+  });
+}
+
+function renderCombosModal() {
+  const container = document.getElementById('combos-table');
+  container.innerHTML = '';
+  Object.keys(COMBO_DEFS).forEach(key => {
+    const def = COMBO_DEFS[key];
+    const st = getComboStats(key);
+    const row = document.createElement('div');
+    row.className = 'flex items-center justify-between gap-2 p-2.5 rounded-xl bg-black/30 border border-emerald-900/70 text-xs';
+    row.innerHTML = `
+      <div>
+        <div class="font-bold text-white">${def.name} <span class="text-amber-300 ml-1">Lv.${st.level}</span></div>
+        <div class="text-slate-400 text-[11px]">${def.desc}</div>
+      </div>
+      <div class="text-right font-display shrink-0">
+        <span class="text-blue-300 font-bold">${st.pts} pts</span>
+        <span class="text-slate-500 mx-1">×</span>
+        <span class="text-rose-300 font-bold">${st.mult.toFixed(1)}x</span>
+      </div>
+    `;
+    container.appendChild(row);
+  });
+}
+
+/* ============================================================================
+   8. MODAL & TOAST HELPERS
+   ============================================================================ */
+function openModal(modalId) {
+  const backdrop = document.getElementById('modal-backdrop');
+  backdrop.classList.remove('hidden');
+  backdrop.classList.add('flex');
+  ['shop-modal', 'combos-modal', 'end-modal'].forEach(id => {
+    document.getElementById(id).classList.toggle('hidden', id !== modalId);
+  });
+}
+
+function closeModals() {
+  const backdrop = document.getElementById('modal-backdrop');
+  backdrop.classList.add('hidden');
+  backdrop.classList.remove('flex');
+}
+
+function showToast(text, colorClass = 'text-amber-300') {
+  const layer = document.getElementById('toast-layer');
+  const el = document.createElement('div');
+  el.className = `floating-toast font-display font-bold text-base sm:text-2xl drop-shadow-[0_4px_8px_rgba(0,0,0,0.9)] px-3.5 py-1.5 rounded-xl bg-black/75 border border-white/10 text-center max-w-[90%] ${colorClass}`;
+  el.textContent = text;
+  layer.appendChild(el);
+  setTimeout(() => el.remove(), 1200);
+}
+
+/* ============================================================================
+   9. EVENT BINDINGS & INITIALIZATION
+   ============================================================================ */
+['desktop', 'mobile'].forEach(mode => {
+  document.getElementById(`btn-keep-roll-${mode}`).onclick = handleKeepAndRoll;
+  document.getElementById(`btn-bank-${mode}`).onclick = handleBankPot;
+  document.getElementById(`btn-reroll-${mode}`).onclick = handleRerollUnlocked;
+});
+
+document.getElementById('btn-select-all').onclick = () => {
+  if (state.phase !== 'PLAYING') return;
+  SoundFX.click();
+  const bestIds = findBestAutoSelection(state.currentDice);
+  state.currentDice.forEach(d => {
+    if (!d.locked) d.selected = bestIds.has(d.id);
+  });
+  renderAll(false);
+};
+
+document.getElementById('btn-clear-sel').onclick = () => {
+  if (state.phase !== 'PLAYING') return;
+  SoundFX.click();
+  state.currentDice.forEach(d => { d.selected = false; });
+  renderAll(false);
+};
+
+document.getElementById('blind-panel').onclick = () => {
+  SoundFX.click();
+  const blindLabels = ['Small Blind', 'Big Blind', 'Boss Blind'];
+  const blindNames = ['The Warm-Up', 'The Escalation', state.bossEffect ? BOSS_BLINDS[(state.ante - 1) % BOSS_BLINDS.length].name : 'Boss Blind'];
+  const blindDescs = [
+    'Standard Farkle rules. Score enough points before running out of turns.',
+    'Higher stakes and bigger target. Build your turn multiplier!',
+    state.bossEffect ? BOSS_BLINDS[(state.ante - 1) % BOSS_BLINDS.length].desc : ''
+  ];
+  openInspector({
+    tag: `${blindLabels[state.blindIndex]} • Target ${state.targetScore.toLocaleString()}`,
+    title: blindNames[state.blindIndex],
+    desc: blindDescs[state.blindIndex],
+    sellIndex: null
+  });
+};
+
+document.getElementById('btn-inspect-close').onclick = () => {
+  SoundFX.click();
+  closeInspector();
+};
+
+document.getElementById('btn-combos').onclick = () => {
+  SoundFX.click();
+  renderCombosModal();
+  openModal('combos-modal');
+};
+
+document.getElementById('btn-close-combos').onclick = () => {
+  SoundFX.click();
+  closeModals();
+};
+
+document.getElementById('btn-sound').onclick = (e) => {
+  const on = SoundFX.toggle();
+  e.currentTarget.textContent = on ? '🔊' : '🔇';
+};
+
+document.getElementById('btn-shop-reroll').onclick = () => {
+  if (state.money < 2) return;
+  state.money -= 2;
+  SoundFX.click();
+  generateShopOffers();
+  renderAll(false);
+  renderShop();
+};
+
+document.getElementById('btn-next-blind').onclick = () => {
+  SoundFX.click();
+  advanceToNextBlind();
+};
+
+document.getElementById('btn-new-run').onclick = () => {
+  SoundFX.click();
+  closeModals();
+  state = createInitialState();
+  startBlind();
+};
+
+document.getElementById('btn-restart-run').onclick = () => {
+  SoundFX.click();
+  closeModals();
+  state = createInitialState();
+  startBlind();
+};
+
+// Boot game
+state = createInitialState();
+startBlind();
+</script>
 </body>
 </html>
