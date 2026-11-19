@@ -272,12 +272,20 @@
       <!-- Primary Menu Actions -->
       <div class="w-full flex flex-col gap-2.5 mt-6">
         <button id="btn-menu-continue" class="hidden w-full py-3.5 px-6 rounded-2xl bg-gradient-to-b from-blue-500 to-blue-700 hover:from-blue-400 hover:to-blue-600 active:scale-95 text-white font-display font-bold text-lg tracking-wide shadow-lg shadow-blue-950/60 border border-blue-300/40 transition">
-          RESUME CURRENT RUN
+          CONTINUE SAVED RUN
+        </button>
+
+        <button id="btn-menu-save-quit" class="hidden w-full py-3 px-6 rounded-xl bg-emerald-950/90 hover:bg-emerald-900 active:scale-95 border border-emerald-500/50 text-emerald-200 font-display font-bold text-sm tracking-wide transition">
+          💾 SAVE & QUIT TO MENU
         </button>
 
         <button id="btn-menu-play" class="w-full py-4 px-6 rounded-2xl bg-gradient-to-b from-amber-400 to-amber-600 hover:from-amber-300 hover:to-amber-500 active:scale-95 text-slate-950 font-display font-bold text-xl tracking-wide shadow-xl shadow-amber-950/60 border border-amber-200/60 transition">
           ▶ PLAY NEW RUN
         </button>
+
+        <div id="menu-saved-status" class="hidden text-[11px] text-emerald-300/80 font-medium">
+          Saved run ready in storage
+        </div>
 
         <div class="grid grid-cols-2 gap-2.5 mt-0.5">
           <button id="btn-menu-how" class="py-3 px-4 rounded-xl bg-[#132521] hover:bg-[#1a332d] active:scale-95 border border-emerald-700/60 text-emerald-100 font-display font-bold text-sm tracking-wide transition flex items-center justify-center gap-1.5">
@@ -857,14 +865,17 @@ const BOSS_BLINDS = [
 ];
 
 /* ============================================================================
-   3. GAME STATE & MAIN MENU CONTROL
+   3. GAME STATE, SAVE & QUIT, AND MAIN MENU CONTROL
    ============================================================================ */
+const SAVE_RUN_KEY = 'farklatro_saved_run_v1';
+const BEST_BANK_KEY = 'farklatro_best_bank';
+
 let state = {};
 let hasActiveRun = false;
 let allTimeBestBank = 0;
 
 try {
-  const savedBest = localStorage.getItem('farklatro_best_bank');
+  const savedBest = localStorage.getItem(BEST_BANK_KEY);
   if (savedBest) allTimeBestBank = parseInt(savedBest, 10) || 0;
 } catch (e) {}
 
@@ -901,17 +912,73 @@ function createInitialState() {
   };
 }
 
+function saveRunToStorage() {
+  if (!hasActiveRun || state.phase === 'GAMEOVER') return;
+  try {
+    const payload = {
+      savedAt: Date.now(),
+      state
+    };
+    localStorage.setItem(SAVE_RUN_KEY, JSON.stringify(payload));
+  } catch (e) {}
+}
+
+function clearSavedRun() {
+  try {
+    localStorage.removeItem(SAVE_RUN_KEY);
+  } catch (e) {}
+}
+
+function loadSavedRun() {
+  try {
+    const raw = localStorage.getItem(SAVE_RUN_KEY);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !parsed.state || parsed.state.phase === 'GAMEOVER') return false;
+    state = {
+      ...createInitialState(),
+      ...parsed.state,
+      comboLevels: {
+        ...createInitialState().comboLevels,
+        ...(parsed.state.comboLevels || {})
+      },
+      dicePool: Array.isArray(parsed.state.dicePool) && parsed.state.dicePool.length === 6
+        ? parsed.state.dicePool
+        : createInitialState().dicePool,
+      currentDice: Array.isArray(parsed.state.currentDice) ? parsed.state.currentDice : [],
+      charms: Array.isArray(parsed.state.charms) ? parsed.state.charms : [],
+      shopOffers: Array.isArray(parsed.state.shopOffers) ? parsed.state.shopOffers : []
+    };
+    hasActiveRun = true;
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function hasSavedRunAvailable() {
+  try {
+    const raw = localStorage.getItem(SAVE_RUN_KEY);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    return Boolean(parsed && parsed.state && parsed.state.phase !== 'GAMEOVER');
+  } catch (e) {
+    return false;
+  }
+}
+
 function showMainMenu() {
   const menu = document.getElementById('main-menu-screen');
-  const resumeBtn = document.getElementById('btn-menu-continue');
+  const continueBtn = document.getElementById('btn-menu-continue');
+  const saveQuitBtn = document.getElementById('btn-menu-save-quit');
+  const savedStatus = document.getElementById('menu-saved-status');
   const bestBanner = document.getElementById('menu-best-banner');
   const bestVal = document.getElementById('menu-best-val');
 
-  if (hasActiveRun && state.phase !== 'GAMEOVER') {
-    resumeBtn.classList.remove('hidden');
-  } else {
-    resumeBtn.classList.add('hidden');
-  }
+  const canContinue = (hasActiveRun && state.phase !== 'GAMEOVER') || hasSavedRunAvailable();
+  continueBtn.classList.toggle('hidden', !canContinue);
+  saveQuitBtn.classList.toggle('hidden', !(hasActiveRun && state.phase !== 'GAMEOVER'));
+  savedStatus.classList.toggle('hidden', !hasSavedRunAvailable());
 
   if (allTimeBestBank > 0) {
     bestVal.textContent = allTimeBestBank.toLocaleString();
@@ -1154,6 +1221,7 @@ function startBlind() {
   state.inspectedItem = null;
 
   startNewTurn(true);
+  saveRunToStorage();
 }
 
 function startNewTurn(skipSound = false) {
@@ -1185,6 +1253,7 @@ function startNewTurn(skipSound = false) {
 
   if (!skipSound) SoundFX.roll();
   renderAll(true);
+  saveRunToStorage();
   checkForFarkle();
 }
 
@@ -1215,6 +1284,7 @@ function checkForFarkle() {
     }
 
     state.turnsLeft--;
+    saveRunToStorage();
 
     setTimeout(() => {
       if (state.roundScore >= state.targetScore) {
@@ -1279,6 +1349,7 @@ function handleKeepAndRoll() {
   }
 
   renderAll(true);
+  saveRunToStorage();
   checkForFarkle();
 }
 
@@ -1327,7 +1398,7 @@ function handleBankPot() {
   if (bankedTotal > state.bestBank) state.bestBank = bankedTotal;
   if (bankedTotal > allTimeBestBank) {
     allTimeBestBank = bankedTotal;
-    try { localStorage.setItem('farklatro_best_bank', String(allTimeBestBank)); } catch (e) {}
+    try { localStorage.setItem(BEST_BANK_KEY, String(allTimeBestBank)); } catch (e) {}
   }
 
   SoundFX.bank();
@@ -1338,6 +1409,7 @@ function handleBankPot() {
 
   state.turnsLeft--;
   renderAll(false);
+  saveRunToStorage();
 
   if (state.roundScore >= state.targetScore) {
     setTimeout(() => onBlindWon(), 650);
@@ -1361,6 +1433,7 @@ function handleRerollUnlocked() {
   });
 
   renderAll(true);
+  saveRunToStorage();
   checkForFarkle();
 }
 
@@ -1379,6 +1452,7 @@ function onBlindWon() {
     `Blind Clear $${baseReward} + Unused Turns $${turnBonus} + Interest $${interest} = +$${totalEarned}`;
 
   generateShopOffers();
+  saveRunToStorage();
   openModal('shop-modal');
   renderShop();
 }
@@ -1386,6 +1460,7 @@ function onBlindWon() {
 function onGameOver() {
   state.phase = 'GAMEOVER';
   hasActiveRun = false;
+  clearSavedRun();
   const blindNames = ['Small Blind', 'Big Blind', 'Boss Blind'];
   document.getElementById('end-ante').textContent = `Ante ${state.ante} • ${blindNames[state.blindIndex]}`;
   document.getElementById('end-best-bank').textContent = `${state.bestBank.toLocaleString()} pts`;
@@ -1448,6 +1523,7 @@ function buyShopOffer(index) {
 
   renderAll(false);
   renderShop();
+  saveRunToStorage();
 }
 
 function buyDieUpgrade(materialId) {
@@ -1458,6 +1534,7 @@ function buyDieUpgrade(materialId) {
   SoundFX.buy();
   renderAll(false);
   renderShop();
+  saveRunToStorage();
 }
 
 function advanceToNextBlind() {
@@ -1492,6 +1569,7 @@ function openInspector({ tag, title, desc, sellIndex = null }) {
       state.charms.splice(sellIndex, 1);
       closeInspector();
       renderAll(false);
+      saveRunToStorage();
       if (state.phase === 'SHOP') renderShop();
     };
   } else {
@@ -1915,6 +1993,7 @@ document.getElementById('btn-shop-reroll').onclick = () => {
   generateShopOffers();
   renderAll(false);
   renderShop();
+  saveRunToStorage();
 };
 
 document.getElementById('btn-next-blind').onclick = () => {
@@ -1922,9 +2001,10 @@ document.getElementById('btn-next-blind').onclick = () => {
   advanceToNextBlind();
 };
 
-// Main Menu Button Handlers
+// Main Menu & Save/Quit Button Handlers
 document.getElementById('btn-menu-play').onclick = () => {
   SoundFX.roll();
+  clearSavedRun();
   closeModals();
   hideMainMenu();
   state = createInitialState();
@@ -1933,7 +2013,26 @@ document.getElementById('btn-menu-play').onclick = () => {
 
 document.getElementById('btn-menu-continue').onclick = () => {
   SoundFX.click();
+  if (!hasActiveRun || state.phase === 'GAMEOVER') {
+    loadSavedRun();
+  }
+  renderAll(false);
+  closeModals();
   hideMainMenu();
+  if (state.phase === 'SHOP') {
+    openModal('shop-modal');
+    renderShop();
+  } else if (state.phase === 'PLAYING') {
+    checkForFarkle();
+  }
+};
+
+document.getElementById('btn-menu-save-quit').onclick = () => {
+  SoundFX.click();
+  saveRunToStorage();
+  document.getElementById('menu-saved-status').textContent = 'Run saved!';
+  document.getElementById('menu-saved-status').classList.remove('hidden');
+  document.getElementById('btn-menu-continue').classList.remove('hidden');
 };
 
 document.getElementById('btn-menu-how').onclick = () => {
@@ -1950,11 +2049,13 @@ document.getElementById('btn-menu-sound').onclick = () => {
 
 document.getElementById('btn-open-menu').onclick = () => {
   SoundFX.click();
+  if (hasActiveRun && state.phase !== 'GAMEOVER') saveRunToStorage();
   showMainMenu();
 };
 
 document.getElementById('btn-header-menu').onclick = () => {
   SoundFX.click();
+  if (hasActiveRun && state.phase !== 'GAMEOVER') saveRunToStorage();
   showMainMenu();
 };
 
@@ -1966,11 +2067,18 @@ document.getElementById('btn-end-menu').onclick = () => {
 
 document.getElementById('btn-restart-run').onclick = () => {
   SoundFX.roll();
+  clearSavedRun();
   closeModals();
   hideMainMenu();
   state = createInitialState();
   startBlind();
 };
+
+window.addEventListener('pagehide', () => {
+  if (hasActiveRun && state.phase !== 'GAMEOVER') {
+    saveRunToStorage();
+  }
+});
 
 // Initialize state behind the Main Menu and show startup screen
 state = createInitialState();
